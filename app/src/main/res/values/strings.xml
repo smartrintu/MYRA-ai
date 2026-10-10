@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">MYRA</string>
+    <string name="accessibility_description">MYRA ko apps kholne/band karne, screen par tap karne aur text type karne ke liye Accessibility chahiye. Ye sirf aapke voice commands par kaam karta hai.</string>
+</resources>

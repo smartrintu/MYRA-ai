@@ -1,0 +1,9 @@
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-keep class okhttp3.** { *; }
+-keep class okio.** { *; }
+-keep class kotlinx.coroutines.** { *; }
+-keep class com.myra.assistant.service.** { *; }
+-keep class com.google.crypto.tink.** { *; }
+-dontwarn com.google.errorprone.annotations.**
+-dontwarn javax.annotation.**

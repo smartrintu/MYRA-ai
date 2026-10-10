@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#050505"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-black"
+            android:letterSpacing="0.3"
+            android:text="SETTINGS"
+            android:textColor="#FF1744"
+            android:textSize="22sp" />
+
+        <TextView style="@style/MyraLabel" android:text="GEMINI API KEY" />
+        <EditText
+            android:id="@+id/apiKeyInput"
+            style="@style/MyraInput"
+            android:hint="AIza..."
+            android:inputType="textPassword" />
+
+        <TextView style="@style/MyraLabel" android:text="YOUR NAME" />
+        <EditText
+            android:id="@+id/userNameInput"
+            style="@style/MyraInput"
+            android:hint="Aapka naam"
+            android:inputType="textPersonName" />
+
+        <TextView style="@style/MyraLabel" android:text="AI MODEL" />
+        <Spinner
+            android:id="@+id/modelSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:background="@drawable/bg_input_field" />
+
+        <TextView style="@style/MyraLabel" android:text="VOICE" />
+        <Spinner
+            android:id="@+id/voiceSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:background="@drawable/bg_input_field" />
+
+        <TextView style="@style/MyraLabel" android:text="PERSONALITY" />
+        <RadioGroup
+            android:id="@+id/personalityGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/radioGf"
+                style="@style/MyraRadio"
+                android:text="💖 GF Mode (Hinglish)" />
+            <RadioButton
+                android:id="@+id/radioPro"
+                style="@style/MyraRadio"
+                android:text="💼 Professional (English)" />
+            <RadioButton
+                android:id="@+id/radioAssistant"
+                style="@style/MyraRadio"
+                android:text="🤖 Assistant" />
+        </RadioGroup>
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/muteWhileSpeakingSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Mute mic while MYRA speaks (use if she hears herself)"
+            android:textColor="#EEEEEE"
+            android:textSize="13sp" />
+
+        <TextView style="@style/MyraLabel" android:text="PRIME CONTACTS" />
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/primeRecycler"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false" />
+
+        <Button
+            android:id="@+id/addPrimeBtn"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="@null"
+            android:background="@drawable/bg_prime_badge"
+            android:text="ADD PRIME CONTACT"
+            android:textColor="#FF1744" />
+
+        <TextView style="@style/MyraLabel" android:text="PERMISSIONS" />
+        <TextView
+            android:id="@+id/accessStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_input_field"
+            android:padding="14dp"
+            android:textSize="13sp" />
+        <TextView
+            android:id="@+id/overlayStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_input_field"
+            android:padding="14dp"
+            android:textSize="13sp" />
+
+        <Button
+            android:id="@+id/saveBtn"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp"
+            android:backgroundTint="@null"
+            android:background="@drawable/bg_save_button"
+            android:text="SAVE"
+            android:textColor="#FFFFFF" />
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="white">#FFFFFF</color>
+    <color name="myra_bg">#050505</color>
+    <color name="myra_red">#FF1744</color>
+    <color name="myra_purple">#D500F9</color>
+    <color name="myra_card">#111111</color>
+    <color name="myra_prime_card">#1A0000</color>
+    <color name="myra_text">#EEEEEE</color>
+    <color name="myra_hint">#888888</color>
+    <color name="myra_success">#00E676</color>
+</resources>
