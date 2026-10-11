@@ -29,6 +29,8 @@ import com.myra.assistant.R
 import com.myra.assistant.ai.CommandParser
 import com.myra.assistant.data.SecurePrefs
 import com.myra.assistant.databinding.ActivityMainBinding
+import com.myra.assistant.license.LicenseManager
+import com.myra.assistant.ui.license.ActivationActivity
 import com.myra.assistant.service.CallMonitorService
 import com.myra.assistant.service.MyraOverlayService
 import com.myra.assistant.service.MyraVoiceService
@@ -50,6 +52,7 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
     private var askedOptional = false
     private var isInCallMode = false
     private var lastSyncedTs = 0L
+    private var suppressSwitch = false
     private var recognizer: SpeechRecognizer? = null
     private val handler = Handler(Looper.getMainLooper())
 
@@ -72,6 +75,11 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!LicenseManager.status(this).valid) {
+            startActivity(Intent(this, ActivationActivity::class.java))
+            finish()
+            return
+        }
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         initViews()
@@ -96,12 +104,14 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (!::binding.isInitialized) return
         setIntent(intent)
         handleIncomingCallIntent(intent)
     }
 
     override fun onStart() {
         super.onStart()
+        if (!::binding.isInitialized) return
         MyraVoiceService.uiListener = this
         syncFromService()
     }
@@ -113,6 +123,12 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
 
     override fun onResume() {
         super.onResume()
+        if (!::binding.isInitialized) return
+        if (!LicenseManager.status(this).valid) {
+            startActivity(Intent(this, ActivationActivity::class.java))
+            finish()
+            return
+        }
         val n = SecurePrefs.userName.trim()
         binding.subtitleText.text = if (n.isEmpty()) "AI COMPANION" else "${n.uppercase()}'S AI"
     }
@@ -126,7 +142,7 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
     // ------------------------------------------------------------------ UiListener (called on main thread)
 
     override fun onStatus(text: String) {
-        binding.statusText.text = text
+        binding.statusText.text = if (SecurePrefs.enabled) text else "MYRA OFF — switch ON karo"
     }
 
     override fun onOrb(state: OrbAnimationView.State) {
@@ -162,6 +178,31 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
         binding.micButton.setImageResource(
             if (running && !muted) R.drawable.ic_mic_on else R.drawable.ic_mic_off
         )
+        updateEnableSwitch()
+    }
+
+    private fun updateEnableSwitch() {
+        suppressSwitch = true
+        binding.enableSwitch.isChecked = SecurePrefs.enabled
+        binding.enableSwitch.text = if (SecurePrefs.enabled) "MYRA ON" else "MYRA OFF"
+        suppressSwitch = false
+    }
+
+    /** Master switch: OFF stops the mic, the floating orb and call announcements completely. */
+    private fun setMyraEnabled(on: Boolean) {
+        SecurePrefs.enabled = on
+        updateEnableSwitch()
+        if (on) {
+            startSystemServices()
+            startVoiceService()
+        } else {
+            stopService(Intent(this, MyraVoiceService::class.java))
+            stopService(Intent(this, MyraOverlayService::class.java))
+            stopService(Intent(this, CallMonitorService::class.java))
+            onOrb(OrbAnimationView.State.IDLE)
+            onMic(true, false)
+            setStatus("MYRA OFF — switch ON karo")
+        }
     }
 
     private fun syncFromService() {
@@ -179,6 +220,11 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
         binding.chatRecycler.adapter = chatAdapter
         binding.orbView.setState(OrbAnimationView.State.IDLE)
 
+        binding.enableSwitch.setOnCheckedChangeListener { _, checked ->
+            if (!suppressSwitch) setMyraEnabled(checked)
+        }
+        updateEnableSwitch()
+
         binding.settingsBtn.setOnClickListener {
             settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
         }
@@ -186,7 +232,7 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
         binding.micButton.setOnClickListener {
             val svc = MyraVoiceService.instance
             when {
-                svc == null -> startVoiceService()
+                svc == null -> if (!SecurePrefs.enabled) setMyraEnabled(true) else startVoiceService()
                 !MyraVoiceService.connected -> startOfflineListen()
                 else -> svc.setMuted(!MyraVoiceService.muted)
             }
@@ -256,6 +302,10 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
     }
 
     private fun onPermissionsReady() {
+        if (!SecurePrefs.enabled) {
+            setStatus("MYRA OFF — switch ON karo")
+            return
+        }
         startSystemServices()
         if (MyraVoiceService.instance == null) startVoiceService()
     }
@@ -292,6 +342,7 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
     }
 
     private fun onSettingsSaved() {
+        if (!SecurePrefs.enabled) return
         val svc = MyraVoiceService.instance
         if (svc != null) svc.reconnect() else ensurePermissions()
     }
@@ -300,6 +351,7 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
 
     private fun handleIncomingCallIntent(i: Intent?) {
         if (i == null || !i.getBooleanExtra("INCOMING_CALL", false)) return
+        if (!SecurePrefs.enabled) return
         val name = i.getStringExtra("CALLER_NAME") ?: "Unknown"
         i.removeExtra("INCOMING_CALL")
         if (Build.VERSION.SDK_INT >= 27) {

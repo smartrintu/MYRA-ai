@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Base64
 import com.myra.assistant.data.SecurePrefs
+import com.myra.assistant.license.LicenseManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -28,7 +29,7 @@ import kotlin.math.min
  * Gemini Live API over WebSocket (BidiGenerateContent).
  * Handles setup, audio in/out, transcripts, function calls, session resumption, goAway and backoff reconnect.
  */
-class GeminiLiveClient(@Suppress("unused") private val context: Context) {
+class GeminiLiveClient(private val context: Context) {
 
     // Called on main thread unless noted
     var onConnected: (() -> Unit)? = null
@@ -215,9 +216,11 @@ class GeminiLiveClient(@Suppress("unused") private val context: Context) {
                 put("temperature", 0.9)
             })
             put("systemInstruction", JSONObject().put(
-                "parts", JSONArray().put(JSONObject().put("text", PromptBuilder.build()))
+                "parts", JSONArray().put(JSONObject().put("text", PromptBuilder.build(context)))
             ))
-            put("tools", JSONArray().put(JSONObject().put("functionDeclarations", FunctionDeclarations.build())))
+            if (LicenseManager.allowsControl(context)) {
+                put("tools", JSONArray().put(JSONObject().put("functionDeclarations", FunctionDeclarations.build())))
+            }
             put("sessionResumption", JSONObject().apply {
                 resumeHandle?.let { put("handle", it) }
             })

@@ -49,6 +49,19 @@ object SecurePrefs {
         get() = prefs.getString("language", "HINGLISH") ?: "HINGLISH"
         set(v) = prefs.edit().putString("language", v).apply()
 
+    /** Master ON/OFF switch for MYRA (voice service, floating orb, call announcements). */
+    var enabled: Boolean
+        get() = prefs.getBoolean("myra_enabled", true)
+        set(v) = prefs.edit().putBoolean("myra_enabled", v).apply()
+
+    var licenseKey: String
+        get() = prefs.getString("license_key", "") ?: ""
+        set(v) = prefs.edit().putString("license_key", v).apply()
+
+    var lastSeenSec: Long
+        get() = prefs.getLong("last_seen_sec", 0L)
+        set(v) = prefs.edit().putLong("last_seen_sec", v).apply()
+
     var model: String
         get() = prefs.getString("gemini_model", GeminiModels.DEFAULT_MODEL) ?: GeminiModels.DEFAULT_MODEL
         set(v) = prefs.edit().putString("gemini_model", v).apply()

@@ -130,6 +130,16 @@
                 android:text="Tap karke bolo 💬"
                 android:textColor="#AAAAAA"
                 android:textSize="14sp" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/enableSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:checked="true"
+                android:text="MYRA ON"
+                android:textColor="#EEEEEE"
+                android:textSize="14sp" />
         </LinearLayout>
 
         <LinearLayout

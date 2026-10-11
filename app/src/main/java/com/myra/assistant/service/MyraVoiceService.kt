@@ -20,6 +20,7 @@ import com.myra.assistant.ai.AudioEngine
 import com.myra.assistant.ai.GeminiLiveClient
 import com.myra.assistant.ai.PromptBuilder
 import com.myra.assistant.data.SecurePrefs
+import com.myra.assistant.license.LicenseManager
 import com.myra.assistant.ui.main.ChatMessage
 import com.myra.assistant.ui.main.MainActivity
 import com.myra.assistant.ui.main.OrbAnimationView
@@ -71,6 +72,17 @@ class MyraVoiceService : Service() {
     private val inputBuffer = StringBuilder()
     private val outputBuffer = StringBuilder()
 
+    private val licenseTick = object : Runnable {
+        override fun run() {
+            if (!LicenseManager.status(applicationContext).valid) {
+                Toast.makeText(applicationContext, "MYRA: key expire ho gayi, nayi key lo", Toast.LENGTH_LONG).show()
+                stopSelf()
+                return
+            }
+            main.postDelayed(this, 60_000)
+        }
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     // ------------------------------------------------------------------ lifecycle
@@ -82,6 +94,11 @@ class MyraVoiceService : Service() {
             stopSelf()
             return
         }
+        if (!LicenseManager.status(this).valid) {
+            lastStatus = "Activation key chahiye"
+            stopSelf()
+            return
+        }
         if (SecurePrefs.apiKey.isBlank()) {
             lastStatus = "Settings mein API key daalo"
             stopSelf()
@@ -89,6 +106,7 @@ class MyraVoiceService : Service() {
         }
         instance = this
         muted = false
+        main.postDelayed(licenseTick, 60_000)
         acquireWakeLock()
 
         val l = GeminiLiveClient(applicationContext)
@@ -164,15 +182,21 @@ class MyraVoiceService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) stopSelf()
+        if (intent?.action == ACTION_STOP) {
+            SecurePrefs.enabled = false
+            stopService(Intent(this, MyraOverlayService::class.java))
+            stopService(Intent(this, CallMonitorService::class.java))
+            stopSelf()
+        }
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
+        main.removeCallbacks(licenseTick)
         if (instance === this) instance = null
         connected = false
         lastOrb = OrbAnimationView.State.IDLE
-        lastStatus = "MYRA band hai — mic dabao"
+        lastStatus = "MYRA band hai"
         try { live?.release() } catch (_: Exception) {}
         try { audio?.release() } catch (_: Exception) {}
         try { if (wakeLock?.isHeld == true) wakeLock?.release() } catch (_: Exception) {}

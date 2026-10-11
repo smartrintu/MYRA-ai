@@ -21,6 +21,7 @@ import android.telecom.TelecomManager
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.myra.assistant.data.SecurePrefs
+import com.myra.assistant.license.LicenseManager
 import com.myra.assistant.service.AccessibilityHelperService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,7 +40,7 @@ class CommandExecutor(context: Context) {
     fun execute(type: String, params: Map<String, String>, onResult: (String) -> Unit) {
         scope.launch {
             val result = try {
-                run(type, params)
+                guarded(type, params)
             } catch (e: CommandException) {
                 "error: ${e.message}"
             } catch (e: Exception) {
@@ -48,6 +49,10 @@ class CommandExecutor(context: Context) {
             withContext(Dispatchers.Main) { onResult(result) }
         }
     }
+
+    private fun guarded(type: String, p: Map<String, String>): String =
+        if (!LicenseManager.allowsControl(ctx)) "error: phone control is not included in the current plan (needs a TRIAL or PRO key)"
+        else run(type, p)
 
     private fun run(type: String, p: Map<String, String>): String = when (type) {
         "open_app" -> openApp(p["app_name"] ?: throw CommandException("app name missing"))

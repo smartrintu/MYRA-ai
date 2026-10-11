@@ -15,6 +15,7 @@ import android.provider.ContactsContract
 import android.telephony.TelephonyManager
 import androidx.core.app.NotificationCompat
 import com.myra.assistant.R
+import com.myra.assistant.data.SecurePrefs
 import com.myra.assistant.ui.main.MainActivity
 
 /**
@@ -95,6 +96,7 @@ class CallMonitorService : Service() {
     }
 
     private fun announce(number: String?) {
+        if (!SecurePrefs.enabled) return
         val name = if (number.isNullOrBlank()) "Unknown number" else (resolveCallerName(number) ?: number)
 
         val i = Intent(this, MainActivity::class.java)

@@ -20,7 +20,9 @@ import com.myra.assistant.ai.GeminiModels
 import com.myra.assistant.data.PrimeContact
 import com.myra.assistant.data.SecurePrefs
 import com.myra.assistant.databinding.ActivitySettingsBinding
+import com.myra.assistant.license.LicenseManager
 import com.myra.assistant.service.AccessibilityHelperService
+import com.myra.assistant.ui.license.ActivationActivity
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -80,6 +82,7 @@ class SettingsActivity : AppCompatActivity() {
                 startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
             }
         }
+        b.licenseStatus.setOnClickListener { startActivity(Intent(this, ActivationActivity::class.java)) }
         b.saveBtn.setOnClickListener { save() }
     }
 
@@ -93,6 +96,13 @@ class SettingsActivity : AppCompatActivity() {
         b.overlayStatus.text = if (ov) "✅ Floating orb permission ON" else "❌ Floating orb permission OFF — tap to enable"
         b.overlayStatus.setTextColor(if (ov) Color.parseColor("#00E676") else Color.parseColor("#FF1744"))
         refreshBatteryStatus()
+        val ls = LicenseManager.status(this)
+        b.licenseStatus.text = if (ls.valid) "🔑 Plan: ${ls.plan} • " +
+            (if (ls.expiresAtSec == 0L) "lifetime" else "khatam: " +
+                java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(ls.expiresAtSec * 1000))) +
+            " (tap: key badlo)"
+        else "❌ Key active nahi — tap karke key daalo"
+        b.licenseStatus.setTextColor(if (ls.valid) Color.parseColor("#00E676") else Color.parseColor("#FF1744"))
     }
 
     private fun refreshBatteryStatus() {

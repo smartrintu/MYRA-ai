@@ -13,6 +13,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import com.myra.assistant.R
+import com.myra.assistant.data.SecurePrefs
 import com.myra.assistant.ui.main.MainActivity
 import com.myra.assistant.ui.main.OrbAnimationView
 import kotlin.math.abs
@@ -56,6 +57,7 @@ class MyraOverlayService : Service() {
     @SuppressLint("ClickableViewAccessibility")
     private fun showOverlay() {
         if (overlayView != null) return
+        if (!SecurePrefs.enabled) return
         if (!Settings.canDrawOverlays(this)) return
 
         val wm = getSystemService(WINDOW_SERVICE) as WindowManager
