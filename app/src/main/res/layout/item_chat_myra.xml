@@ -7,12 +7,13 @@
     android:paddingTop="4dp"
     android:paddingBottom="4dp">
 
-    <View
-        android:layout_width="8dp"
-        android:layout_height="8dp"
-        android:layout_marginTop="14dp"
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:layout_marginEnd="6dp"
-        android:background="@drawable/bg_dot_red" />
+        android:text="💖"
+        android:textSize="14sp" />
 
     <TextView
         android:id="@+id/chatText"
@@ -24,6 +25,6 @@
         android:paddingTop="8dp"
         android:paddingEnd="14dp"
         android:paddingBottom="8dp"
-        android:textColor="#EEEEEE"
+        android:textColor="#FFF0F6"
         android:textSize="14sp" />
 </LinearLayout>

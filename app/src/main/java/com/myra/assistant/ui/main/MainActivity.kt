@@ -130,7 +130,7 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
             return
         }
         val n = SecurePrefs.userName.trim()
-        binding.subtitleText.text = if (n.isEmpty()) "AI COMPANION" else "${n.uppercase()}'S AI"
+        binding.subtitleText.text = if (n.isEmpty()) "AI COMPANION" else "💕 $n's MYRA"
     }
 
     override fun onDestroy() {
@@ -147,12 +147,13 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
 
     override fun onOrb(state: OrbAnimationView.State) {
         binding.orbView.setState(state)
+        binding.heartsView.setLively(state == OrbAnimationView.State.SPEAKING || state == OrbAnimationView.State.HEARING)
         // red = waiting, green = you are talking, purple = MYRA talking, cyan = working
         val color = when (state) {
-            OrbAnimationView.State.HEARING -> Color.parseColor("#00E676")
-            OrbAnimationView.State.SPEAKING -> Color.parseColor("#D500F9")
-            OrbAnimationView.State.THINKING -> Color.parseColor("#40C4FF")
-            else -> Color.parseColor("#FF1744")
+            OrbAnimationView.State.HEARING -> Color.parseColor("#FFD54F")
+            OrbAnimationView.State.SPEAKING -> Color.parseColor("#E040FB")
+            OrbAnimationView.State.THINKING -> Color.parseColor("#80D8FF")
+            else -> Color.parseColor("#FF4D8D")
         }
         val active = state == OrbAnimationView.State.HEARING ||
             state == OrbAnimationView.State.SPEAKING ||
@@ -224,6 +225,12 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
             if (!suppressSwitch) setMyraEnabled(checked)
         }
         updateEnableSwitch()
+
+        binding.shayariBtn.setOnClickListener {
+            val svc = MyraVoiceService.instance
+            if (svc != null && MyraVoiceService.connected) svc.requestShayari()
+            else Toast.makeText(this, "Pehle MYRA ON karo aur connect hone do 💕", Toast.LENGTH_SHORT).show()
+        }
 
         binding.settingsBtn.setOnClickListener {
             settingsLauncher.launch(Intent(this, SettingsActivity::class.java))

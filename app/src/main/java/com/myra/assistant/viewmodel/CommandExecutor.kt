@@ -22,6 +22,8 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.myra.assistant.data.SecurePrefs
 import com.myra.assistant.license.LicenseManager
+import com.myra.assistant.service.MyraVoiceService
+import com.myra.assistant.ui.website.WebsitePreviewActivity
 import com.myra.assistant.service.AccessibilityHelperService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -153,6 +155,8 @@ class CommandExecutor(context: Context) {
             val t = AccessibilityHelperService.instance?.readScreenText() ?: ""
             if (t.isBlank()) "error: could not read any text on this screen" else "success: screen shows: $t"
         }
+        "build_website" -> buildWebsite(p["description"] ?: throw CommandException("description missing"), p["name"], false)
+        "edit_website" -> buildWebsite(p["instructions"] ?: throw CommandException("instructions missing"), p["name"] ?: "edited-site", true)
         "unlock_phone" -> unlockPhone()
         else -> "error: unknown command $type"
     }
@@ -347,6 +351,30 @@ class CommandExecutor(context: Context) {
         am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
         am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
         return "success: media $action"
+    }
+
+    // ------------------------------------------------------------------ website builder
+
+    private fun buildWebsite(text: String, name: String?, edit: Boolean): String {
+        val current = if (edit) (WebsiteBuilder.lastHtml(ctx) ?: throw CommandException("no website built yet, build one first")) else null
+        val prompt = if (current != null) WebsiteBuilder.editSitePrompt(current, text) else WebsiteBuilder.newSitePrompt(text)
+        val slug = WebsiteBuilder.slug(name)
+        scope.launch {
+            try {
+                val html = WebsiteBuilder.generate(prompt)
+                val file = WebsiteBuilder.save(ctx, slug, html)
+                val saved = WebsiteBuilder.saveToDownloads(ctx, slug, html)
+                start(Intent(ctx, WebsitePreviewActivity::class.java).putExtra("path", file.absolutePath))
+                MyraVoiceService.instance?.tell(
+                    "The website '$slug' is finished and is now open on the screen" +
+                        (if (saved != null) " (also saved in $saved)" else "") +
+                        ". Tell the user the good news in your personality and mention the Share and Download buttons at the bottom."
+                )
+            } catch (e: Exception) {
+                MyraVoiceService.instance?.tell("Building the website failed: ${e.message}. Tell the user honestly and offer to try again.")
+            }
+        }
+        return "success: started building the website in the background, it takes about 30-60 seconds; you will get a message when it is ready"
     }
 
     // ------------------------------------------------------------------ lock screen

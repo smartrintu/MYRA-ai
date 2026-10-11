@@ -2,7 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#050505"
+    android:background="#1A0B2E"
     android:fillViewport="true">
 
     <LinearLayout
@@ -17,7 +17,7 @@
             android:fontFamily="sans-serif-black"
             android:letterSpacing="0.3"
             android:text="SETTINGS"
-            android:textColor="#FF1744"
+            android:textColor="#FF4D8D"
             android:textSize="22sp" />
 
         <TextView style="@style/MyraLabel" android:text="GEMINI API KEY" />
@@ -96,7 +96,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="Mute mic while MYRA speaks (use if she hears herself)"
-            android:textColor="#EEEEEE"
+            android:textColor="#FFF0F6"
             android:textSize="13sp" />
 
         <TextView style="@style/MyraLabel" android:text="PRIME CONTACTS" />
@@ -114,7 +114,7 @@
             android:backgroundTint="@null"
             android:background="@drawable/bg_prime_badge"
             android:text="ADD PRIME CONTACT"
-            android:textColor="#FF1744" />
+            android:textColor="#FF4D8D" />
 
         <TextView style="@style/MyraLabel" android:text="PERMISSIONS" />
         <TextView

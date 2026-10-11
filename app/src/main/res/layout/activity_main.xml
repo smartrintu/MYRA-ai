@@ -5,10 +5,15 @@
     android:layout_height="match_parent"
     android:background="@drawable/bg_gradient_mesh">
 
+    <com.myra.assistant.ui.main.FloatingHeartsView
+        android:id="@+id/heartsView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:paddingBottom="12dp">
+        android:paddingBottom="10dp">
 
         <LinearLayout
             android:id="@+id/topBar"
@@ -17,7 +22,7 @@
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="16dp"
-            android:paddingTop="12dp"
+            android:paddingTop="10dp"
             android:paddingEnd="16dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -37,7 +42,7 @@
                     android:drawablePadding="4dp"
                     android:fontFamily="monospace"
                     android:text="100%"
-                    android:textColor="#FF1744"
+                    android:textColor="#FF8FB8"
                     android:textSize="12sp" />
 
                 <TextView
@@ -46,7 +51,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="monospace"
                     android:text="RAM --%"
-                    android:textColor="#888888"
+                    android:textColor="#C9A7E8"
                     android:textSize="11sp" />
             </LinearLayout>
 
@@ -59,20 +64,21 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:fontFamily="sans-serif-black"
-                    android:letterSpacing="0.3"
+                    android:fontFamily="casual"
+                    android:letterSpacing="0.2"
                     android:text="MYRA"
-                    android:textColor="#FF1744"
-                    android:textSize="22sp" />
+                    android:textColor="#FF8FB8"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/subtitleText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:fontFamily="monospace"
+                    android:fontFamily="casual"
                     android:text="AI COMPANION"
-                    android:textColor="#888888"
-                    android:textSize="9sp" />
+                    android:textColor="#FFC2D4"
+                    android:textSize="11sp" />
             </LinearLayout>
 
             <LinearLayout
@@ -88,7 +94,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="monospace"
                     android:text="--:--"
-                    android:textColor="#FF1744"
+                    android:textColor="#FF8FB8"
                     android:textSize="14sp" />
 
                 <ImageButton
@@ -112,7 +118,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/topBar">
 
-            <com.myra.assistant.ui.main.OrbAnimationView
+            <com.myra.assistant.ui.main.GirlAvatarView
                 android:id="@+id/orbView"
                 android:layout_width="260dp"
                 android:layout_height="260dp" />
@@ -120,25 +126,26 @@
             <com.myra.assistant.ui.main.WaveformView
                 android:id="@+id/waveformView"
                 android:layout_width="200dp"
-                android:layout_height="40dp" />
+                android:layout_height="32dp" />
 
             <TextView
                 android:id="@+id/statusText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Tap karke bolo 💬"
-                android:textColor="#AAAAAA"
-                android:textSize="14sp" />
+                android:layout_marginTop="4dp"
+                android:fontFamily="casual"
+                android:text="Tap karke bolo 💕"
+                android:textColor="#FFC2D4"
+                android:textSize="15sp" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/enableSwitch"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="8dp"
                 android:checked="true"
                 android:text="MYRA ON"
-                android:textColor="#EEEEEE"
+                android:textColor="#FFF0F6"
                 android:textSize="14sp" />
         </LinearLayout>
 
@@ -156,7 +163,7 @@
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/chatRecycler"
                 android:layout_width="match_parent"
-                android:layout_height="200dp"
+                android:layout_height="150dp"
                 android:clipToPadding="false" />
 
             <ImageButton
@@ -164,7 +171,7 @@
                 android:layout_width="72dp"
                 android:layout_height="72dp"
                 android:layout_gravity="center_horizontal"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="6dp"
                 android:background="@drawable/bg_mic_button"
                 android:contentDescription="Microphone"
                 android:padding="20dp"
@@ -172,13 +179,29 @@
                 android:src="@drawable/ic_mic_off" />
 
             <TextView
+                android:id="@+id/shayariBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_pill"
+                android:fontFamily="casual"
+                android:paddingStart="18dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="18dp"
+                android:paddingBottom="8dp"
+                android:text="💌 Shayari sunao"
+                android:textColor="#FFF0F6"
+                android:textSize="14sp" />
+
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="4dp"
-                android:text="Long press to stop"
-                android:textColor="#888888"
-                android:textSize="11sp" />
+                android:text="Mic long press: MYRA ko chup karao"
+                android:textColor="#C9A7E8"
+                android:textSize="10sp" />
         </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -187,7 +210,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:alpha="0"
-        android:background="#FF1744"
+        android:background="#FF4D8D"
         android:clickable="false"
         android:focusable="false" />
 </FrameLayout>

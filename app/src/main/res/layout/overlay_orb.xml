@@ -17,7 +17,7 @@
         android:fontFamily="sans-serif-black"
         android:letterSpacing="0.3"
         android:text="MYRA"
-        android:textColor="#FF1744"
+        android:textColor="#FF4D8D"
         android:textSize="12sp" />
 
     <ImageButton

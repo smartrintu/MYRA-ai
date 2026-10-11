@@ -18,7 +18,7 @@ class WaveformView @JvmOverloads constructor(
     private val bars = 20
     private val heights = FloatArray(bars) { 0.05f }
     private val targets = FloatArray(bars) { 0.05f }
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF1744") }
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF4D8D") }
     private var animator: ValueAnimator? = null
 
     fun setAmplitude(rms: Float) {

@@ -32,8 +32,8 @@ class OrbAnimationView @JvmOverloads constructor(
     private val startTime = SystemClock.uptimeMillis()
     private var driver: ValueAnimator? = null
 
-    private var c1 = Color.parseColor("#B71C1C")
-    private var c2 = Color.parseColor("#880E4F")
+    private var c1 = Color.parseColor("#C2185B")
+    private var c2 = Color.parseColor("#7B1FA2")
 
     private var cx = 0f
     private var cy = 0f
@@ -59,11 +59,11 @@ class OrbAnimationView @JvmOverloads constructor(
         if (s == state) return
         state = s
         when (s) {
-            State.IDLE -> { c1 = Color.parseColor("#B71C1C"); c2 = Color.parseColor("#880E4F") }
-            State.LISTENING, State.ACTIVE -> { c1 = Color.parseColor("#FF1744"); c2 = Color.parseColor("#D500F9") }
-            State.HEARING -> { c1 = Color.parseColor("#00E676"); c2 = Color.parseColor("#00B8D4") }
-            State.SPEAKING -> { c1 = Color.parseColor("#E040FB"); c2 = Color.parseColor("#FF1744") }
-            State.THINKING -> { c1 = Color.parseColor("#40C4FF"); c2 = Color.parseColor("#00B0FF") }
+            State.IDLE -> { c1 = Color.parseColor("#C2185B"); c2 = Color.parseColor("#7B1FA2") }
+            State.LISTENING, State.ACTIVE -> { c1 = Color.parseColor("#FF4D8D"); c2 = Color.parseColor("#B388FF") }
+            State.HEARING -> { c1 = Color.parseColor("#FFD54F"); c2 = Color.parseColor("#FF8A65") }
+            State.SPEAKING -> { c1 = Color.parseColor("#FF80AB"); c2 = Color.parseColor("#E040FB") }
+            State.THINKING -> { c1 = Color.parseColor("#80D8FF"); c2 = Color.parseColor("#B388FF") }
         }
         rebuildShaders()
         invalidate()

@@ -288,6 +288,19 @@ class MyraVoiceService : Service() {
         return true
     }
 
+    /** Sends an instruction to MYRA (not shown in chat); used when a background job finishes. */
+    fun tell(text: String) {
+        val l = live ?: return
+        if (l.isConnected) l.sendText(text)
+    }
+
+    fun requestShayari() {
+        val l = live ?: return
+        if (!l.isConnected) return
+        if (muted) setMuted(false)
+        l.sendText("Please recite one short, original romantic shayari for me right now, in my chosen language and in your sweet girlfriend style, softly and slowly.")
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private fun idleState() = if (muted) OrbAnimationView.State.IDLE else OrbAnimationView.State.LISTENING
@@ -350,18 +363,19 @@ class MyraVoiceService : Service() {
             "BANGLA" -> when {
                 pro -> "নমস্কার${if (name.isBlank()) "" else " $name"}। মায়রা প্রস্তুত, বলুন কীভাবে সাহায্য করতে পারি?"
                 assistant -> "হ্যালো ${name.ifBlank { "বন্ধু" }}! আমি মায়রা। কীভাবে সাহায্য করতে পারি?"
-                else -> "হ্যালো ${name.ifBlank { "বন্ধু" }}! আমি মায়রা, এসে গেছি। বলো, কী সাহায্য লাগবে?"
+                else -> "হ্যালো ${name.ifBlank { "সোনা" }}! এত দেরি করলে কেন, আমি কখন থেকে তোমার জন্য অপেক্ষা করছিলাম। বলো না, আজ কী খবর আমার সোনার?"
             }
             "ENGLISH" -> when {
                 pro -> "Good day${if (name.isBlank()) "" else " $name"}. MYRA is online and ready to assist you."
-                else -> "Hey ${name.ifBlank { "there" }}! MYRA here. How can I help you?"
+                assistant -> "Hello ${name.ifBlank { "there" }}! I'm MYRA. How can I help you?"
+                else -> "Heyyy ${name.ifBlank { "you" }}! You took so long, I've been waiting for you. Tell me, how is my favorite person doing?"
             }
             else -> when {
                 pro -> "Good day${if (name.isBlank()) "" else " $name"}. MYRA is online and ready to assist you."
                 assistant -> "Hello $n! Main MYRA hoon. Kaise help karun aapki?"
-                else -> "Hey $n! Main aa gayi hoon. Kya help chahiye tumhe?"
+                else -> "Heyyy $n! Kitni der laga di aane mein, main kab se tumhara intezaar kar rahi thi. Bolo na, aaj kya plan hai meri jaan ka?"
             }
         }
-        live?.sendText("Say this greeting exactly, in your own voice, and nothing else: \"$text\"")
+        live?.sendText("Say this greeting exactly, softly and sweetly, in your own voice, and nothing else: \"$text\"")
     }
 }

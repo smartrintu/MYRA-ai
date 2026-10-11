@@ -86,5 +86,12 @@ object FunctionDeclarations {
             mapOf("seconds" to prop("INTEGER", "Duration in seconds")), listOf("seconds")))
         put(fn("read_screen", "Read the visible text on the current screen so you can describe it or decide what to tap."))
         put(fn("unlock_phone", "Wake the screen and unlock the phone. Works fully only if the phone has a swipe-only lock; with a PIN/pattern/fingerprint the user must unlock it personally. Safe to call when already unlocked."))
+        put(fn("build_website", "Build a complete responsive website (single HTML file) for the user with AI. Takes about a minute; the result opens in a preview with Share and Download buttons.",
+            mapOf(
+                "description" to prop("STRING", "Detailed brief: business or person name, purpose, style, colors, sections, language"),
+                "name" to prop("STRING", "Short name for the site file, e.g. rahul-photography")
+            ), listOf("description")))
+        put(fn("edit_website", "Change the website that was built last (colors, text, new sections, etc.).",
+            mapOf("instructions" to prop("STRING", "What to change")), listOf("instructions")))
     }
 }

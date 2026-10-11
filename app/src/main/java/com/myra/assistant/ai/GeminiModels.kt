@@ -7,6 +7,9 @@ package com.myra.assistant.ai
 object GeminiModels {
     const val API_VERSION = "v1beta"
 
+    /** Text model used to write websites (verify the ID in Google's docs; edit only here). */
+    const val TEXT_MODEL = "models/gemini-2.5-flash"
+
     data class ModelOption(val label: String, val id: String)
     data class VoiceOption(val label: String, val id: String)
 

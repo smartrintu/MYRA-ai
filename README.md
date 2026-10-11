@@ -23,3 +23,9 @@
 - Xiaomi/Redmi/POCO: App info > Autostart ON; Battery saver > "No restrictions"; Other permissions > "Display pop-up windows while running in background" ON; Recents mein MYRA ko lock (pin) karo.
 - App sirf tab start hoti hai jab MYRA screen par khuli ho (Android ka rule). Ek baar start hone ke baad background/lock mein chalti rehti hai.
 - PIN/pattern/fingerprint lock Android kisi app ko bypass nahi karne deta; "unlock_phone" sirf screen jagata hai aur swipe-only lock hata sakta hai.
+
+## Naya: cute UI, GF style aur website builder
+- Cute animated ladki (aankhein jhapakti hain, hothon se bolti hai, tap karne par wink + hearts), floating hearts, pink theme.
+- "💌 Shayari sunao" button; GF mode mein MYRA beech-beech mein romantic shayari bhi sunati hai.
+- Website: bolo "mere liye ek photography studio ki website bana do" — MYRA ~1 minute mein poori website banakar preview kholti hai (Share / Download buttons).
+  PRO/TRIAL key chahiye. Website Download/MYRA folder mein bhi save hoti hai; GitHub Pages ya Netlify Drop se free publish kar sakte ho.
