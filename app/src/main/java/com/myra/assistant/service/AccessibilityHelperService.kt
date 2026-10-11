@@ -1,6 +1,9 @@
 package com.myra.assistant.service
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.GestureDescription
+import android.graphics.Path
+import android.os.Build
 import android.content.Context
 import android.os.Bundle
 import android.provider.Settings
@@ -63,6 +66,68 @@ class AccessibilityHelperService : AccessibilityService() {
             putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
         }
         return target.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+    }
+
+    /** Clicks the first view whose content description contains any of the needles (case-insensitive). */
+    fun clickFirstWithDescription(vararg needles: String): Boolean {
+        val root = rootInActiveWindow ?: return false
+        return findAndClick(root, needles.map { it.lowercase() })
+    }
+
+    private fun findAndClick(node: AccessibilityNodeInfo, needles: List<String>): Boolean {
+        val d = node.contentDescription?.toString()?.lowercase()
+        if (d != null && needles.any { d.contains(it) }) {
+            var cur: AccessibilityNodeInfo? = node
+            while (cur != null) {
+                if (cur.isClickable) return cur.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                cur = cur.parent
+            }
+        }
+        for (i in 0 until node.childCount) {
+            val c = node.getChild(i) ?: continue
+            if (findAndClick(c, needles)) return true
+        }
+        return false
+    }
+
+    fun tapAt(x: Float, y: Float): Boolean {
+        val path = Path().apply { moveTo(x, y) }
+        val stroke = GestureDescription.StrokeDescription(path, 0L, 80L)
+        return dispatchGesture(GestureDescription.Builder().addStroke(stroke).build(), null, null)
+    }
+
+    fun tapAtFraction(fx: Float, fy: Float): Boolean {
+        val dm = resources.displayMetrics
+        return tapAt(dm.widthPixels * fx, dm.heightPixels * fy)
+    }
+
+    fun readScreenText(maxChars: Int = 1500): String {
+        val root = rootInActiveWindow ?: return ""
+        val sb = StringBuilder()
+        collectText(root, sb, maxChars)
+        return sb.toString()
+    }
+
+    private fun collectText(node: AccessibilityNodeInfo, sb: StringBuilder, max: Int) {
+        if (sb.length >= max) return
+        val t = node.text?.toString() ?: node.contentDescription?.toString()
+        if (!t.isNullOrBlank()) sb.append(t.trim()).append(" | ")
+        for (i in 0 until node.childCount) {
+            val c = node.getChild(i) ?: continue
+            collectText(c, sb, max)
+        }
+    }
+
+    fun globalActionByName(name: String): Boolean = when (name.lowercase()) {
+        "home" -> performGlobalAction(GLOBAL_ACTION_HOME)
+        "back" -> performGlobalAction(GLOBAL_ACTION_BACK)
+        "recents" -> performGlobalAction(GLOBAL_ACTION_RECENTS)
+        "notifications" -> performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
+        "quick_settings" -> performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
+        "power_menu" -> performGlobalAction(GLOBAL_ACTION_POWER_DIALOG)
+        "lock_screen" -> if (Build.VERSION.SDK_INT >= 28) performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN) else false
+        "screenshot" -> if (Build.VERSION.SDK_INT >= 28) performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT) else false
+        else -> false
     }
 
     fun scrollDown(): Boolean = scroll(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)

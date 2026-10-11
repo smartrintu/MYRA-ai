@@ -48,6 +48,15 @@ object CommandParser {
         Regex("^(?:close|exit)\\s+(.+)$").find(t)?.let { return AppCommand("close_app") }
         Regex("^(.+?)\\s+(?:band karo|band kar do|close karo)$").find(t)?.let { return AppCommand("close_app") }
 
+        Regex("^youtube\\s+(?:pe|par|mein|me)\\s+(.+?)\\s+(?:chalao|bajao|play karo|chala do|baja do)$").find(t)
+            ?.let { return AppCommand("play_youtube", mapOf("query" to it.groupValues[1].trim())) }
+        Regex("^play\\s+(.+?)(?:\\s+on\\s+youtube)?$").find(t)
+            ?.let { return AppCommand("play_youtube", mapOf("query" to it.groupValues[1].trim())) }
+        Regex("^(.+?)\\s+(?:bajao|baja do)$").find(t)
+            ?.let { return AppCommand("play_youtube", mapOf("query" to it.groupValues[1].trim())) }
+        Regex("^ইউটিউবে\\s+(.+?)\\s+(?:চালাও|বাজাও)$").find(t)
+            ?.let { return AppCommand("play_youtube", mapOf("query" to it.groupValues[1].trim())) }
+
         Regex("^(?:open|launch|start)\\s+(.+)$").find(t)
             ?.let { return AppCommand("open_app", mapOf("app_name" to it.groupValues[1].trim())) }
         Regex("^(.+?)\\s+(?:kholo|khol do|open karo|chalao|chalu karo|start karo)$").find(t)

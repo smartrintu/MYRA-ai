@@ -115,6 +115,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        val n = SecurePrefs.userName.trim()
+        binding.subtitleText.text = if (n.isEmpty()) "AI COMPANION" else "${n.uppercase()}'S AI"
         audioEngine?.isMuted = isMuted
     }
 

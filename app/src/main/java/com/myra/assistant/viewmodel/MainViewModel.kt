@@ -13,7 +13,9 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.ContactsContract.CommonDataKinds.Phone
+import android.provider.AlarmClock
 import android.provider.Settings
+import android.view.KeyEvent
 import android.telecom.TelecomManager
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -97,6 +99,52 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val svc = AccessibilityHelperService.instance
             val ok = if (p["direction"] == "up") svc?.scrollUp() else svc?.scrollDown()
             if (ok == true) "success: scrolled" else "error: nothing scrollable found"
+        }
+        "play_youtube" -> playYoutube(p["query"] ?: throw CommandException("song/video name missing"))
+        "search_web" -> {
+            val q = p["query"] ?: throw CommandException("query missing")
+            start(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=" + Uri.encode(q))))
+            "success: Google search opened for '$q'"
+        }
+        "open_url" -> {
+            val u = p["url"] ?: throw CommandException("url missing")
+            if (!u.startsWith("http://") && !u.startsWith("https://")) throw CommandException("only http/https links allowed")
+            start(Intent(Intent.ACTION_VIEW, Uri.parse(u)))
+            "success: opened $u"
+        }
+        "navigate_to" -> navigateTo(p["place"] ?: throw CommandException("place missing"))
+        "media_control" -> mediaControl(p["action"] ?: throw CommandException("action missing"))
+        "system_action" -> {
+            requireAccessibility()
+            val a = p["action"] ?: throw CommandException("action missing")
+            if (AccessibilityHelperService.instance?.globalActionByName(a) == true) "success: $a done"
+            else "error: could not perform '$a' (valid: home, back, recents, notifications, quick_settings, lock_screen, screenshot, power_menu)"
+        }
+        "set_alarm" -> {
+            val h = p["hour"]?.toIntOrNull() ?: throw CommandException("hour missing")
+            val m = p["minute"]?.toIntOrNull() ?: 0
+            start(
+                Intent(AlarmClock.ACTION_SET_ALARM)
+                    .putExtra(AlarmClock.EXTRA_HOUR, h)
+                    .putExtra(AlarmClock.EXTRA_MINUTES, m)
+                    .putExtra(AlarmClock.EXTRA_MESSAGE, p["label"] ?: "MYRA")
+                    .putExtra(AlarmClock.EXTRA_SKIP_UI, true)
+            )
+            "success: alarm set for %02d:%02d".format(h, m)
+        }
+        "set_timer" -> {
+            val sec = p["seconds"]?.toIntOrNull() ?: throw CommandException("seconds missing")
+            start(
+                Intent(AlarmClock.ACTION_SET_TIMER)
+                    .putExtra(AlarmClock.EXTRA_LENGTH, sec)
+                    .putExtra(AlarmClock.EXTRA_SKIP_UI, true)
+            )
+            "success: timer set for $sec seconds"
+        }
+        "read_screen" -> {
+            requireAccessibility()
+            val t = AccessibilityHelperService.instance?.readScreenText() ?: ""
+            if (t.isBlank()) "error: could not read any text on this screen" else "success: screen shows: $t"
         }
         else -> "error: unknown command $type"
     }
@@ -236,7 +284,61 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val digits = resolveNumber(target).filter { it.isDigit() }
         if (digits.isEmpty()) throw CommandException("invalid number")
         start(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$digits?text=" + Uri.encode(message))))
+        val svc = AccessibilityHelperService.instance
+        if (svc != null && message.isNotBlank()) {
+            Thread.sleep(3000)
+            repeat(6) {
+                if (svc.clickFirstWithDescription("send")) return "success: WhatsApp message sent to $target"
+                Thread.sleep(800)
+            }
+            return "success: WhatsApp chat opened for $target, but the send button was not found — user must press send"
+        }
         return "success: WhatsApp chat opened for $target — user must press send"
+    }
+
+    // ------------------------------------------------------------------ media & navigation
+
+    private fun playYoutube(query: String): String {
+        val uri = Uri.parse("https://www.youtube.com/results?search_query=" + Uri.encode(query) + "&sp=EgIQAQ%3D%3D")
+        try {
+            start(Intent(Intent.ACTION_VIEW, uri).setPackage("com.google.android.youtube"))
+        } catch (_: Exception) {
+            start(Intent(Intent.ACTION_VIEW, uri))
+        }
+        val svc = AccessibilityHelperService.instance
+            ?: return "success: YouTube search for '$query' opened, but accessibility is OFF so it could not auto-play — user must tap the video"
+        Thread.sleep(3000)
+        repeat(6) {
+            if (svc.clickFirstWithDescription("play video")) return "success: playing '$query' on YouTube"
+            Thread.sleep(800)
+        }
+        svc.tapAtFraction(0.5f, 0.33f)
+        return "success: opened YouTube results for '$query' and tapped the first result (not fully verified)"
+    }
+
+    private fun navigateTo(place: String): String {
+        val nav = Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=" + Uri.encode(place)))
+            .setPackage("com.google.android.apps.maps")
+        try {
+            start(nav)
+        } catch (_: Exception) {
+            start(Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=" + Uri.encode(place))))
+        }
+        return "success: navigation to '$place' started"
+    }
+
+    private fun mediaControl(action: String): String {
+        val code = when (action.lowercase()) {
+            "play", "pause", "play_pause" -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+            "next" -> KeyEvent.KEYCODE_MEDIA_NEXT
+            "previous" -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
+            "stop" -> KeyEvent.KEYCODE_MEDIA_STOP
+            else -> throw CommandException("unknown media action '$action' (play_pause, next, previous, stop)")
+        }
+        val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
+        am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
+        return "success: media $action"
     }
 
     // ------------------------------------------------------------------ device

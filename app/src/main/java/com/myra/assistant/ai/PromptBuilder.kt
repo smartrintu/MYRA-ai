@@ -45,6 +45,7 @@ object PromptBuilder {
             $personality
             You are speaking ALOUD — keep responses natural and conversational. Do not read emojis or markdown aloud.
             When the user asks for a phone action (open/close an app, call, SMS, WhatsApp, volume, torch, WiFi/Bluetooth settings, answering or rejecting a call, tapping or typing on screen), CALL THE MATCHING FUNCTION.
+            Examples: "play <song>" or "YouTube pe <song> chalao" -> play_youtube. "<name> ko WhatsApp karo" -> send_whatsapp. To do multi-step tasks on screen, use read_screen, then click_on_screen_text / type_text / scroll_screen / system_action step by step.
             Only say the action succeeded after the function result says success. If the result starts with "error", tell the user honestly what went wrong. Never invent function results.
             Prime contacts ("close friend", "my love", "meri jaan", "প্রিয় বন্ধু" = index 0, "second contact" = index 1, and so on): $primeText
         """.trimIndent()

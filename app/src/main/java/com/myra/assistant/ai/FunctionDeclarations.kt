@@ -37,7 +37,7 @@ object FunctionDeclarations {
                 "name_or_number" to prop("STRING", "Contact name or phone number"),
                 "message" to prop("STRING", "Message text")
             ), listOf("name_or_number", "message")))
-        put(fn("send_whatsapp", "Open a WhatsApp chat with a prefilled message.",
+        put(fn("send_whatsapp", "Open a WhatsApp chat with a prefilled message and press send automatically when accessibility is on.",
             mapOf(
                 "name_or_number" to prop("STRING", "Contact name or phone number"),
                 "message" to prop("STRING", "Message text")
@@ -64,5 +64,26 @@ object FunctionDeclarations {
             mapOf("text" to prop("STRING", "Text to type")), listOf("text")))
         put(fn("scroll_screen", "Scroll the current screen.",
             mapOf("direction" to prop("STRING", "up or down")), listOf("direction")))
+        put(fn("play_youtube", "Search YouTube for a song or video and start playing it. Use this whenever the user wants to play/listen to a song or watch a video.",
+            mapOf("query" to prop("STRING", "Song or video name, e.g. 'Tum Hi Ho Arijit Singh'")), listOf("query")))
+        put(fn("search_web", "Search Google for something.",
+            mapOf("query" to prop("STRING", "Search text")), listOf("query")))
+        put(fn("open_url", "Open a web link (http/https).",
+            mapOf("url" to prop("STRING", "Full URL")), listOf("url")))
+        put(fn("navigate_to", "Start Google Maps navigation to a place.",
+            mapOf("place" to prop("STRING", "Place name or address")), listOf("place")))
+        put(fn("media_control", "Control the currently playing media.",
+            mapOf("action" to prop("STRING", "play_pause, next, previous or stop")), listOf("action")))
+        put(fn("system_action", "Phone system buttons/gestures.",
+            mapOf("action" to prop("STRING", "home, back, recents, notifications, quick_settings, lock_screen, screenshot or power_menu")), listOf("action")))
+        put(fn("set_alarm", "Set an alarm.",
+            mapOf(
+                "hour" to prop("INTEGER", "Hour in 24h format (0-23)"),
+                "minute" to prop("INTEGER", "Minute (0-59)"),
+                "label" to prop("STRING", "Optional label")
+            ), listOf("hour", "minute")))
+        put(fn("set_timer", "Start a countdown timer.",
+            mapOf("seconds" to prop("INTEGER", "Duration in seconds")), listOf("seconds")))
+        put(fn("read_screen", "Read the visible text on the current screen so you can describe it or decide what to tap."))
     }
 }

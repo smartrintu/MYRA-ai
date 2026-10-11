@@ -36,7 +36,7 @@ object SecurePrefs {
         set(v) = prefs.edit().putString("api_key", v).apply()
 
     var userName: String
-        get() = prefs.getString("user_name", "") ?: ""
+        get() = prefs.getString("user_name", "Smart Rintu") ?: "Smart Rintu"
         set(v) = prefs.edit().putString("user_name", v).apply()
 
     /** GF, PRO or ASSISTANT */

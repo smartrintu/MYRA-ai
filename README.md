@@ -11,3 +11,8 @@
 - Mic, contacts, phone permissions allow karo.
 - Settings mein Accessibility aur "Display over other apps" ON karo.
 - Model IDs: app/src/main/java/com/myra/assistant/ai/GeminiModels.kt
+
+## Full control ke liye zaroori
+- Settings > Accessibility mein MYRA ko ON karo (YouTube auto-play, WhatsApp send, tap, screen read ke liye).
+- Agar Android "Restricted setting" bole: Phone Settings > Apps > MYRA > (teen dot menu) > "Allow restricted settings", phir Accessibility ON karo.
+- Gaana chalate hi YouTube khulta hai aur MYRA background mein chali jaati hai; Android background mein mic nahi sunne deta, wapas MYRA kholo.
