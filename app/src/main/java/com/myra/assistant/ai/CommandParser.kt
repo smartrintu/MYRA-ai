@@ -6,11 +6,27 @@ import java.util.Locale
 /** OFFLINE FALLBACK ONLY (when the Live session is down). Hinglish + English. */
 object CommandParser {
 
-    private val primeWords = listOf("close friend", "my love", "meri jaan", "jaan", "love", "girlfriend")
+    private val primeWords = listOf("close friend", "my love", "meri jaan", "jaan", "love", "girlfriend", "প্রিয়")
 
     fun parse(raw: String): AppCommand? {
         val t = raw.lowercase(Locale.getDefault()).trim().trimEnd('.', '!', '?')
         if (t.isEmpty()) return null
+
+        // ---- Bangla ----
+        if (t.contains("ভলিউম")) {
+            if (t.contains("বাড়া")) return AppCommand("change_volume", mapOf("direction" to "up"))
+            if (t.contains("কমা")) return AppCommand("change_volume", mapOf("direction" to "down"))
+        }
+        if (t.contains("টর্চ")) {
+            val off = t.contains("বন্ধ") || t.contains("অফ")
+            return AppCommand("set_flashlight", mapOf("on" to (!off).toString()))
+        }
+        Regex("^(.+?)\\s+(?:কে\\s+)?কল\\s+(?:করো|কর|দাও)$").find(t)?.let { return callCmd(it.groupValues[1]) }
+        Regex("^কল\\s+(.+)$").find(t)?.let { return callCmd(it.groupValues[1]) }
+        Regex("^(.+?)\\s+বন্ধ\\s+(?:করো|কর)$").find(t)?.let { return AppCommand("close_app") }
+        Regex("^(.+?)\\s+(?:খোলো|খুলো|চালাও|চালু\\s+করো)$").find(t)
+            ?.let { return AppCommand("open_app", mapOf("app_name" to it.groupValues[1].trim())) }
+        // ---- Hinglish / English ----
 
         if (t.contains("volume")) {
             if (Regex("(up|badhao|badha|increase|zyada|tez)").containsMatchIn(t))

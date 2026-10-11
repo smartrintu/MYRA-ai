@@ -50,6 +50,11 @@ class SettingsActivity : AppCompatActivity() {
             "ASSISTANT" -> b.radioAssistant.isChecked = true
             else -> b.radioGf.isChecked = true
         }
+        when (SecurePrefs.language) {
+            "BANGLA" -> b.radioLangBangla.isChecked = true
+            "ENGLISH" -> b.radioLangEnglish.isChecked = true
+            else -> b.radioLangHinglish.isChecked = true
+        }
         b.muteWhileSpeakingSwitch.isChecked = SecurePrefs.muteWhileSpeaking
 
         contacts.addAll(SecurePrefs.getPrimeContacts())
@@ -111,6 +116,11 @@ class SettingsActivity : AppCompatActivity() {
             R.id.radioPro -> "PRO"
             R.id.radioAssistant -> "ASSISTANT"
             else -> "GF"
+        }
+        SecurePrefs.language = when (b.languageGroup.checkedRadioButtonId) {
+            R.id.radioLangBangla -> "BANGLA"
+            R.id.radioLangEnglish -> "ENGLISH"
+            else -> "HINGLISH"
         }
         SecurePrefs.muteWhileSpeaking = b.muteWhileSpeakingSwitch.isChecked
         SecurePrefs.setPrimeContacts(contacts)

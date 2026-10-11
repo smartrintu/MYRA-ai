@@ -29,6 +29,7 @@ import com.myra.assistant.R
 import com.myra.assistant.ai.AudioEngine
 import com.myra.assistant.ai.CommandParser
 import com.myra.assistant.ai.GeminiLiveClient
+import com.myra.assistant.ai.PromptBuilder
 import com.myra.assistant.data.SecurePrefs
 import com.myra.assistant.databinding.ActivityMainBinding
 import com.myra.assistant.service.CallMonitorService
@@ -342,10 +343,23 @@ class MainActivity : AppCompatActivity() {
     private fun sendGreeting() {
         val name = SecurePrefs.userName
         val n = name.ifBlank { "dost" }
-        val text = when (SecurePrefs.personality) {
-            "PRO" -> "Good day${if (name.isBlank()) "" else " $name"}. MYRA is online and ready to assist you."
-            "ASSISTANT" -> "Hello $n! Main MYRA hoon. Kaise help karun aapki?"
-            else -> "Hey $n! Main aa gayi hoon. Kya help chahiye tumhe?"
+        val pro = SecurePrefs.personality == "PRO"
+        val assistant = SecurePrefs.personality == "ASSISTANT"
+        val text = when (PromptBuilder.effectiveLanguage()) {
+            "BANGLA" -> when {
+                pro -> "নমস্কার${if (name.isBlank()) "" else " $name"}। মায়রা প্রস্তুত, বলুন কীভাবে সাহায্য করতে পারি?"
+                assistant -> "হ্যালো ${name.ifBlank { "বন্ধু" }}! আমি মায়রা। কীভাবে সাহায্য করতে পারি?"
+                else -> "হ্যালো ${name.ifBlank { "বন্ধু" }}! আমি মায়রা, এসে গেছি। বলো, কী সাহায্য লাগবে?"
+            }
+            "ENGLISH" -> when {
+                pro -> "Good day${if (name.isBlank()) "" else " $name"}. MYRA is online and ready to assist you."
+                else -> "Hey ${name.ifBlank { "there" }}! MYRA here. How can I help you?"
+            }
+            else -> when {
+                pro -> "Good day${if (name.isBlank()) "" else " $name"}. MYRA is online and ready to assist you."
+                assistant -> "Hello $n! Main MYRA hoon. Kaise help karun aapki?"
+                else -> "Hey $n! Main aa gayi hoon. Kya help chahiye tumhe?"
+            }
         }
         geminiLive?.sendText("Say this greeting exactly, in your own voice, and nothing else: \"$text\"")
     }
@@ -410,7 +424,7 @@ class MainActivity : AppCompatActivity() {
         r.startListening(
             Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
                 .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                .putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-IN")
+                .putExtra(RecognizerIntent.EXTRA_LANGUAGE, if (SecurePrefs.language == "BANGLA") "bn-IN" else "en-IN")
         )
     }
 
@@ -419,8 +433,8 @@ class MainActivity : AppCompatActivity() {
         val t = text.lowercase(Locale.getDefault())
 
         if (isInCallMode) {
-            val accept = listOf("uthao", "utha", "haan", "accept", "answer", "receive").any { t.contains(it) }
-            val reject = listOf("reject", "nahi", "mat", "cut", "decline").any { t.contains(it) }
+            val accept = listOf("uthao", "utha", "haan", "accept", "answer", "receive", "ধরো", "উঠাও", "রিসিভ", "হ্যাঁ").any { t.contains(it) }
+            val reject = listOf("reject", "nahi", "mat", "cut", "decline", "কাটো", "না", "রিজেক্ট").any { t.contains(it) }
             when {
                 accept -> viewModel.execute("answer_call", emptyMap()) { addChat(it, false) }
                 reject -> viewModel.execute("reject_call", emptyMap()) { addChat(it, false) }

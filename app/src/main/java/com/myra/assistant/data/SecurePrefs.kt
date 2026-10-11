@@ -44,6 +44,11 @@ object SecurePrefs {
         get() = prefs.getString("personality_mode", "GF") ?: "GF"
         set(v) = prefs.edit().putString("personality_mode", v).apply()
 
+    /** HINGLISH, BANGLA or ENGLISH */
+    var language: String
+        get() = prefs.getString("language", "HINGLISH") ?: "HINGLISH"
+        set(v) = prefs.edit().putString("language", v).apply()
+
     var model: String
         get() = prefs.getString("gemini_model", GeminiModels.DEFAULT_MODEL) ?: GeminiModels.DEFAULT_MODEL
         set(v) = prefs.edit().putString("gemini_model", v).apply()
