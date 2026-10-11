@@ -16,3 +16,10 @@
 - Settings > Accessibility mein MYRA ko ON karo (YouTube auto-play, WhatsApp send, tap, screen read ke liye).
 - Agar Android "Restricted setting" bole: Phone Settings > Apps > MYRA > (teen dot menu) > "Allow restricted settings", phir Accessibility ON karo.
 - Gaana chalate hi YouTube khulta hai aur MYRA background mein chali jaati hai; Android background mein mic nahi sunne deta, wapas MYRA kholo.
+
+## Background / lock screen mein kaam karne ke liye
+- MYRA ab ek foreground service (notification "MYRA sun rahi hai") se chalti hai; band karne ke liye notification ka **Stop** dabao.
+- Settings mein: Accessibility ON, Display over other apps ON, aur **Battery: unrestricted** (tap karke Allow).
+- Xiaomi/Redmi/POCO: App info > Autostart ON; Battery saver > "No restrictions"; Other permissions > "Display pop-up windows while running in background" ON; Recents mein MYRA ko lock (pin) karo.
+- App sirf tab start hoti hai jab MYRA screen par khuli ho (Android ka rule). Ek baar start hone ke baad background/lock mein chalti rehti hai.
+- PIN/pattern/fingerprint lock Android kisi app ko bypass nahi karne deta; "unlock_phone" sirf screen jagata hai aur swipe-only lock hata sakta hai.

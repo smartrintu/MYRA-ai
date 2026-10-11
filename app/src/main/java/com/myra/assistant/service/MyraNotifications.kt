@@ -7,10 +7,6 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ServiceInfo
-import android.os.Build
-import android.util.Log
-import androidx.core.app.ServiceCompat
 import androidx.core.app.NotificationCompat
 import com.myra.assistant.R
 import com.myra.assistant.ui.main.MainActivity
@@ -45,17 +41,10 @@ object MyraNotifications {
             .build()
     }
 
-    fun startFg(service: Service, id: Int, notification: Notification, microphone: Boolean = false) {
+    fun startFg(service: Service, id: Int, notification: Notification) {
         try {
-            if (microphone && Build.VERSION.SDK_INT >= 30) {
-                ServiceCompat.startForeground(
-                    service, id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                )
-            } else {
-                service.startForeground(id, notification)
-            }
-        } catch (e: Exception) {
-            Log.e("MyraNotifications", "startForeground failed", e)
+            service.startForeground(id, notification)
+        } catch (_: Exception) {
         }
     }
 }

@@ -5,9 +5,7 @@ import android.app.Service
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.PixelFormat
-import android.net.wifi.WifiManager
 import android.os.IBinder
-import android.os.PowerManager
 import android.provider.Settings
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -32,8 +30,6 @@ class MyraOverlayService : Service() {
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
     private val powerReceiver = PowerButtonReceiver { showOverlay() }
-    private var wakeLock: PowerManager.WakeLock? = null
-    private var wifiLock: WifiManager.WifiLock? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -43,40 +39,13 @@ class MyraOverlayService : Service() {
         MyraNotifications.ensureChannels(this)
         MyraNotifications.startFg(
             this, NOTIF_ID,
-            MyraNotifications.foreground(this, "MYRA is active", "MYRA sun rahi hai (background mode)"),
-            microphone = true
+            MyraNotifications.foreground(this, "MYRA is active", "Double-press power to show MYRA")
         )
-        acquireLocks()
         val f = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
         }
         registerReceiver(powerReceiver, f)
-    }
-
-    @SuppressLint("WakelockTimeout")
-    private fun acquireLocks() {
-        try {
-            val pm = getSystemService(POWER_SERVICE) as PowerManager
-            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "myra:voice").apply {
-                setReferenceCounted(false)
-                acquire()
-            }
-            val wm = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
-            @Suppress("DEPRECATION")
-            wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "myra:wifi").apply {
-                setReferenceCounted(false)
-                acquire()
-            }
-        } catch (_: Exception) {
-        }
-    }
-
-    private fun releaseLocks() {
-        try { wakeLock?.takeIf { it.isHeld }?.release() } catch (_: Exception) {}
-        try { wifiLock?.takeIf { it.isHeld }?.release() } catch (_: Exception) {}
-        wakeLock = null
-        wifiLock = null
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -158,7 +127,6 @@ class MyraOverlayService : Service() {
         isRunning = false
         hideOverlay()
         try { unregisterReceiver(powerReceiver) } catch (_: Exception) {}
-        releaseLocks()
         super.onDestroy()
     }
 }

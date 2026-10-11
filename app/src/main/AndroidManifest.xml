@@ -59,8 +59,12 @@
             android:screenOrientation="portrait" />
 
         <service
+            android:name=".service.MyraVoiceService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <service
             android:name=".service.MyraOverlayService"
-            android:foregroundServiceType="microphone"
             android:exported="false" />
 
         <service

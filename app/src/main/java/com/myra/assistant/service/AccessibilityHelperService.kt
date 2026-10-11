@@ -96,6 +96,16 @@ class AccessibilityHelperService : AccessibilityService() {
         return dispatchGesture(GestureDescription.Builder().addStroke(stroke).build(), null, null)
     }
 
+    fun swipeUp(): Boolean {
+        val dm = resources.displayMetrics
+        val path = Path().apply {
+            moveTo(dm.widthPixels / 2f, dm.heightPixels * 0.85f)
+            lineTo(dm.widthPixels / 2f, dm.heightPixels * 0.2f)
+        }
+        val stroke = GestureDescription.StrokeDescription(path, 0L, 350L)
+        return dispatchGesture(GestureDescription.Builder().addStroke(stroke).build(), null, null)
+    }
+
     fun tapAtFraction(fx: Float, fy: Float): Boolean {
         val dm = resources.displayMetrics
         return tapAt(dm.widthPixels * fx, dm.heightPixels * fy)

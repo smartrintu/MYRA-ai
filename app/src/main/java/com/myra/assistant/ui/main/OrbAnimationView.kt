@@ -23,7 +23,7 @@ class OrbAnimationView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
-    enum class State { IDLE, LISTENING, SPEAKING, THINKING, ACTIVE }
+    enum class State { IDLE, LISTENING, HEARING, SPEAKING, THINKING, ACTIVE }
 
     private val density = resources.displayMetrics.density
     private var state = State.IDLE
@@ -61,6 +61,7 @@ class OrbAnimationView @JvmOverloads constructor(
         when (s) {
             State.IDLE -> { c1 = Color.parseColor("#B71C1C"); c2 = Color.parseColor("#880E4F") }
             State.LISTENING, State.ACTIVE -> { c1 = Color.parseColor("#FF1744"); c2 = Color.parseColor("#D500F9") }
+            State.HEARING -> { c1 = Color.parseColor("#00E676"); c2 = Color.parseColor("#00B8D4") }
             State.SPEAKING -> { c1 = Color.parseColor("#E040FB"); c2 = Color.parseColor("#FF1744") }
             State.THINKING -> { c1 = Color.parseColor("#40C4FF"); c2 = Color.parseColor("#00B0FF") }
         }
@@ -127,7 +128,7 @@ class OrbAnimationView @JvmOverloads constructor(
         val scale = if (idle) 1f + 0.15f * pulse else 1f + 0.04f * pulse + 0.12f * amp
         val rot = t * (if (state == State.SPEAKING) 90f else 45f)
         val waveSpeed = if (state == State.SPEAKING) 6f else 3f
-        val showRings = state == State.LISTENING || state == State.SPEAKING || state == State.ACTIVE
+        val showRings = state == State.LISTENING || state == State.HEARING || state == State.SPEAKING || state == State.ACTIVE
 
         // 1 + 2: glow and core
         glowPaint.alpha = (120 + 100 * pulse).toInt()

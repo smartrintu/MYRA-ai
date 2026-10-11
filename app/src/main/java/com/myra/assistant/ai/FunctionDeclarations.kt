@@ -85,5 +85,6 @@ object FunctionDeclarations {
         put(fn("set_timer", "Start a countdown timer.",
             mapOf("seconds" to prop("INTEGER", "Duration in seconds")), listOf("seconds")))
         put(fn("read_screen", "Read the visible text on the current screen so you can describe it or decide what to tap."))
+        put(fn("unlock_phone", "Wake the screen and unlock the phone. Works fully only if the phone has a swipe-only lock; with a PIN/pattern/fingerprint the user must unlock it personally. Safe to call when already unlocked."))
     }
 }

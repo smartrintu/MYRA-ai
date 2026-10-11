@@ -103,7 +103,10 @@ class CallMonitorService : Service() {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
 
         // Works only if the app is already visible; otherwise the full-screen notification below handles it.
-        try { startActivity(i) } catch (_: Exception) {}
+        val handled = MyraVoiceService.instance?.announceCall(name) ?: false
+        if (!handled) {
+            try { startActivity(i) } catch (_: Exception) {}
+        }
 
         val pi = PendingIntent.getActivity(
             this, 7, i, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT

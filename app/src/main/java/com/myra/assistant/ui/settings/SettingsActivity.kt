@@ -4,6 +4,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
@@ -72,6 +73,13 @@ class SettingsActivity : AppCompatActivity() {
                 Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
             )
         }
+        b.batteryStatus.setOnClickListener {
+            try {
+                startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
+            } catch (_: Exception) {
+                startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            }
+        }
         b.saveBtn.setOnClickListener { save() }
     }
 
@@ -84,6 +92,15 @@ class SettingsActivity : AppCompatActivity() {
         val ov = Settings.canDrawOverlays(this)
         b.overlayStatus.text = if (ov) "✅ Floating orb permission ON" else "❌ Floating orb permission OFF — tap to enable"
         b.overlayStatus.setTextColor(if (ov) Color.parseColor("#00E676") else Color.parseColor("#FF1744"))
+        refreshBatteryStatus()
+    }
+
+    private fun refreshBatteryStatus() {
+        val pm = getSystemService(POWER_SERVICE) as PowerManager
+        val ok = pm.isIgnoringBatteryOptimizations(packageName)
+        b.batteryStatus.text = if (ok) "✅ Battery: unrestricted (background OK)"
+        else "❌ Battery restricted — tap karke 'Allow' karo, warna background mein MYRA band ho sakti hai"
+        b.batteryStatus.setTextColor(if (ok) Color.parseColor("#00E676") else Color.parseColor("#FF1744"))
     }
 
     private fun showAddDialog() {

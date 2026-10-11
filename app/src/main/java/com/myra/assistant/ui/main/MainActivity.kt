@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
@@ -18,7 +19,6 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -26,38 +26,30 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.myra.assistant.R
-import com.myra.assistant.ai.AudioEngine
 import com.myra.assistant.ai.CommandParser
-import com.myra.assistant.ai.GeminiLiveClient
-import com.myra.assistant.ai.PromptBuilder
 import com.myra.assistant.data.SecurePrefs
 import com.myra.assistant.databinding.ActivityMainBinding
 import com.myra.assistant.service.CallMonitorService
 import com.myra.assistant.service.MyraOverlayService
+import com.myra.assistant.service.MyraVoiceService
 import com.myra.assistant.ui.settings.SettingsActivity
-import com.myra.assistant.viewmodel.MainViewModel
+import com.myra.assistant.viewmodel.CommandExecutor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class MainActivity : AppCompatActivity() {
+/** UI only. The microphone + Gemini session live in MyraVoiceService so they survive background/lock. */
+class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
 
     private lateinit var binding: ActivityMainBinding
-    private val viewModel: MainViewModel by viewModels()
     private val chatAdapter = ChatAdapter()
+    private val executor by lazy { CommandExecutor(applicationContext) }
 
-    private var geminiLive: GeminiLiveClient? = null
-    private var audioEngine: AudioEngine? = null
-
-    private var isMuted = false
-    private var greetingSent = false
     private var askedOptional = false
-    private var askedBattery = false
     private var isInCallMode = false
-    private val inputBuffer = StringBuilder()
-    private val outputBuffer = StringBuilder()
+    private var lastSyncedTs = 0L
     private var recognizer: SpeechRecognizer? = null
     private val handler = Handler(Looper.getMainLooper())
 
@@ -72,7 +64,6 @@ class MainActivity : AppCompatActivity() {
     private val callEndedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             isInCallMode = false
-            setActive(false)
             setStatus("Call khatam. Sun rahi hoon...")
         }
     }
@@ -109,22 +100,76 @@ class MainActivity : AppCompatActivity() {
         handleIncomingCallIntent(intent)
     }
 
-    // NOTE: mic is intentionally NOT muted in onPause() any more, so MYRA keeps listening in
-    // the background / on the lock screen (the microphone foreground service keeps it alive).
+    override fun onStart() {
+        super.onStart()
+        MyraVoiceService.uiListener = this
+        syncFromService()
+    }
+
+    override fun onStop() {
+        if (MyraVoiceService.uiListener === this) MyraVoiceService.uiListener = null
+        super.onStop()
+    }
 
     override fun onResume() {
         super.onResume()
         val n = SecurePrefs.userName.trim()
         binding.subtitleText.text = if (n.isEmpty()) "AI COMPANION" else "${n.uppercase()}'S AI"
-        audioEngine?.isMuted = isMuted
     }
 
     override fun onDestroy() {
         try { unregisterReceiver(callEndedReceiver) } catch (_: Exception) {}
         recognizer?.destroy()
-        geminiLive?.release()
-        audioEngine?.release()
         super.onDestroy()
+    }
+
+    // ------------------------------------------------------------------ UiListener (called on main thread)
+
+    override fun onStatus(text: String) {
+        binding.statusText.text = text
+    }
+
+    override fun onOrb(state: OrbAnimationView.State) {
+        binding.orbView.setState(state)
+        // red = waiting, green = you are talking, purple = MYRA talking, cyan = working
+        val color = when (state) {
+            OrbAnimationView.State.HEARING -> Color.parseColor("#00E676")
+            OrbAnimationView.State.SPEAKING -> Color.parseColor("#D500F9")
+            OrbAnimationView.State.THINKING -> Color.parseColor("#40C4FF")
+            else -> Color.parseColor("#FF1744")
+        }
+        val active = state == OrbAnimationView.State.HEARING ||
+            state == OrbAnimationView.State.SPEAKING ||
+            state == OrbAnimationView.State.THINKING
+        binding.redOverlay.setBackgroundColor(color)
+        binding.redOverlay.animate().cancel()
+        binding.redOverlay.animate().alpha(if (active) 0.10f else 0f)
+            .setDuration(if (active) 250 else 450).start()
+    }
+
+    override fun onAmplitude(a: Float) {
+        binding.waveformView.setAmplitude(a)
+        binding.orbView.setAmplitude(a)
+    }
+
+    override fun onChat(msg: ChatMessage) {
+        val n = chatAdapter.add(msg)
+        lastSyncedTs = msg.timestamp
+        if (n > 0) binding.chatRecycler.scrollToPosition(n - 1)
+    }
+
+    override fun onMic(muted: Boolean, running: Boolean) {
+        binding.micButton.setImageResource(
+            if (running && !muted) R.drawable.ic_mic_on else R.drawable.ic_mic_off
+        )
+    }
+
+    private fun syncFromService() {
+        val running = MyraVoiceService.instance != null
+        onOrb(MyraVoiceService.lastOrb)
+        onStatus(MyraVoiceService.lastStatus)
+        onMic(MyraVoiceService.muted, running)
+        MyraVoiceService.history.filter { it.timestamp > lastSyncedTs }.forEach { onChat(it) }
     }
 
     // ------------------------------------------------------------------ UI
@@ -139,18 +184,15 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.micButton.setOnClickListener {
-            val live = geminiLive
-            if (live == null || !live.isConnected) {
-                startOfflineListen()
-                return@setOnClickListener
+            val svc = MyraVoiceService.instance
+            when {
+                svc == null -> startVoiceService()
+                !MyraVoiceService.connected -> startOfflineListen()
+                else -> svc.setMuted(!MyraVoiceService.muted)
             }
-            isMuted = !isMuted
-            audioEngine?.isMuted = isMuted
-            if (isMuted) live.sendAudioStreamEnd()
-            updateMicUi()
         }
         binding.micButton.setOnLongClickListener {
-            audioEngine?.clearPlayback()
+            MyraVoiceService.instance?.interrupt()
             setStatus("Ruk gayi 🤐")
             true
         }
@@ -160,22 +202,9 @@ class MainActivity : AppCompatActivity() {
         binding.statusText.text = text
     }
 
-    private fun updateMicUi() {
-        binding.micButton.setImageResource(if (isMuted) R.drawable.ic_mic_off else R.drawable.ic_mic_on)
-        binding.orbView.setState(if (isMuted) OrbAnimationView.State.IDLE else OrbAnimationView.State.LISTENING)
-        setStatus(if (isMuted) "Muted 🔇 — mic dabao" else "Sun rahi hoon...")
-    }
-
-    private fun setActive(active: Boolean) {
-        binding.redOverlay.animate().cancel()
-        binding.redOverlay.animate().alpha(if (active) 0.08f else 0f)
-            .setDuration(if (active) 300 else 500).start()
-    }
-
     private fun addChat(text: String, isUser: Boolean) {
         if (text.isBlank()) return
-        val n = chatAdapter.add(ChatMessage(text.trim(), isUser))
-        if (n > 0) binding.chatRecycler.scrollToPosition(n - 1)
+        onChat(ChatMessage(text.trim(), isUser))
     }
 
     private fun updateStatusBar() {
@@ -228,13 +257,26 @@ class MainActivity : AppCompatActivity() {
 
     private fun onPermissionsReady() {
         startSystemServices()
+        if (MyraVoiceService.instance == null) startVoiceService()
+    }
+
+    private fun startVoiceService() {
+        if (!has(Manifest.permission.RECORD_AUDIO)) {
+            ensurePermissions()
+            return
+        }
         if (SecurePrefs.apiKey.isBlank()) {
             setStatus("Settings mein Gemini API key daalo")
             Toast.makeText(this, "Pehle Settings mein API key daalo", Toast.LENGTH_LONG).show()
             settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
             return
         }
-        if (geminiLive == null) initGeminiLive()
+        try {
+            MyraVoiceService.start(this)
+            setStatus("Connect ho rahi hoon...")
+        } catch (e: Exception) {
+            Toast.makeText(this, "Service start nahi hui: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun startSystemServices() {
@@ -242,146 +284,16 @@ class MainActivity : AppCompatActivity() {
             if (has(Manifest.permission.READ_PHONE_STATE)) {
                 ContextCompat.startForegroundService(this, Intent(this, CallMonitorService::class.java))
             }
-            // Always start the service (it owns the microphone foreground-service state);
-            // the floating orb itself is only drawn if overlay permission is granted.
-            if (has(Manifest.permission.RECORD_AUDIO)) {
+            if (Settings.canDrawOverlays(this)) {
                 ContextCompat.startForegroundService(this, Intent(this, MyraOverlayService::class.java))
-            }
-            askBatteryExemption()
-        } catch (_: Exception) {
-        }
-    }
-
-    private fun askBatteryExemption() {
-        try {
-            val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
-            if (!pm.isIgnoringBatteryOptimizations(packageName) && !askedBattery) {
-                askedBattery = true
-                startActivity(
-                    Intent(
-                        Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                        android.net.Uri.parse("package:$packageName")
-                    )
-                )
             }
         } catch (_: Exception) {
         }
     }
 
     private fun onSettingsSaved() {
-        val live = geminiLive
-        if (live != null) {
-            setStatus("Settings apply ho rahi hain...")
-            live.reconnect()
-        } else {
-            ensurePermissions()
-        }
-    }
-
-    // ------------------------------------------------------------------ Gemini Live
-
-    private fun initGeminiLive() {
-        val live = GeminiLiveClient(applicationContext)
-        val audio = AudioEngine(this)
-        geminiLive = live
-        audioEngine = audio
-        audio.isMuted = isMuted
-        audio.muteWhileSpeaking = SecurePrefs.muteWhileSpeaking
-
-        audio.onAudioChunk = { live.sendAudio(it) }
-        audio.onAmplitudeChanged = { a ->
-            binding.waveformView.setAmplitude(a)
-            binding.orbView.setAmplitude(a)
-        }
-        audio.onSpeakingStarted = {
-            binding.orbView.setState(OrbAnimationView.State.SPEAKING)
-            setActive(true)
-            setStatus("Bol rahi hoon...")
-        }
-        audio.onSpeakingStopped = {
-            binding.orbView.setState(if (isMuted) OrbAnimationView.State.IDLE else OrbAnimationView.State.LISTENING)
-            setActive(false)
-            setStatus(if (isMuted) "Muted 🔇 — mic dabao" else "Sun rahi hoon...")
-        }
-
-        live.onConnected = {
-            audio.muteWhileSpeaking = SecurePrefs.muteWhileSpeaking
-            audio.startRecording()
-            audio.startPlayback()
-            updateMicUi()
-            if (!greetingSent) {
-                greetingSent = true
-                handler.postDelayed({ sendGreeting() }, 600)
-            }
-        }
-        live.onDisconnected = {
-            binding.orbView.setState(OrbAnimationView.State.IDLE)
-            setStatus("Reconnect ho rahi hoon...")
-        }
-        live.onError = { msg ->
-            setStatus("⚠️ $msg")
-            Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
-        }
-        live.onAudioReceived = { audio.queueAudio(it) }
-        live.onInterrupted = {
-            audio.clearPlayback()
-            runOnUiThread { flushOutputOnly() }
-        }
-        live.onInputTranscript = { inputBuffer.append(it) }
-        live.onOutputTranscript = { outputBuffer.append(it) }
-        live.onTurnComplete = { flushTranscripts() }
-        live.onToolCall = { id, name, args ->
-            val params = mutableMapOf<String, String>()
-            args.keys().forEach { k -> params[k] = args.opt(k)?.toString() ?: "" }
-            binding.orbView.setState(OrbAnimationView.State.THINKING)
-            setStatus("Kar rahi hoon...")
-            viewModel.execute(name, params) { result ->
-                binding.orbView.setState(OrbAnimationView.State.LISTENING)
-                live.sendToolResponse(id, name, result)
-            }
-        }
-
-        setStatus("Connect ho rahi hoon...")
-        live.connect()
-    }
-
-    private fun flushTranscripts() {
-        val u = inputBuffer.toString().trim()
-        val m = outputBuffer.toString().trim()
-        inputBuffer.setLength(0)
-        outputBuffer.setLength(0)
-        if (u.isNotEmpty()) addChat(u, true)
-        if (m.isNotEmpty()) addChat(m, false)
-    }
-
-    private fun flushOutputOnly() {
-        val m = outputBuffer.toString().trim()
-        outputBuffer.setLength(0)
-        if (m.isNotEmpty()) addChat(m, false)
-    }
-
-    private fun sendGreeting() {
-        val name = SecurePrefs.userName
-        val n = name.ifBlank { "dost" }
-        val pro = SecurePrefs.personality == "PRO"
-        val assistant = SecurePrefs.personality == "ASSISTANT"
-        val text = when (PromptBuilder.effectiveLanguage()) {
-            "BANGLA" -> when {
-                pro -> "নমস্কার${if (name.isBlank()) "" else " $name"}। মায়রা প্রস্তুত, বলুন কীভাবে সাহায্য করতে পারি?"
-                assistant -> "হ্যালো ${name.ifBlank { "বন্ধু" }}! আমি মায়রা। কীভাবে সাহায্য করতে পারি?"
-                else -> "হ্যালো ${name.ifBlank { "বন্ধু" }}! আমি মায়রা, এসে গেছি। বলো, কী সাহায্য লাগবে?"
-            }
-            "ENGLISH" -> when {
-                pro -> "Good day${if (name.isBlank()) "" else " $name"}. MYRA is online and ready to assist you."
-                else -> "Hey ${name.ifBlank { "there" }}! MYRA here. How can I help you?"
-            }
-            else -> when {
-                pro -> "Good day${if (name.isBlank()) "" else " $name"}. MYRA is online and ready to assist you."
-                assistant -> "Hello $n! Main MYRA hoon. Kaise help karun aapki?"
-                else -> "Hey $n! Main aa gayi hoon. Kya help chahiye tumhe?"
-            }
-        }
-        geminiLive?.sendText("Say this greeting exactly, in your own voice, and nothing else: \"$text\"")
+        val svc = MyraVoiceService.instance
+        if (svc != null) svc.reconnect() else ensurePermissions()
     }
 
     // ------------------------------------------------------------------ incoming calls
@@ -394,24 +306,11 @@ class MainActivity : AppCompatActivity() {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
         }
-        announceCall(name)
-    }
-
-    private fun announceCall(callerName: String) {
-        isInCallMode = true
-        setActive(true)
-        val live = geminiLive
-        if (live != null && live.isConnected) {
-            isMuted = false
-            audioEngine?.isMuted = false
-            live.sendText(
-                "Incoming phone call from $callerName. Tell the user in your personality and ask whether to " +
-                    "answer or reject. When they decide, call answer_call or reject_call."
-            )
-        } else {
-            // Offline fallback: show text and listen with the system speech recognizer.
-            addChat("📞 $callerName ka call aa raha hai — bolo 'uthao' ya 'reject'", false)
-            setStatus("📞 $callerName")
+        val handled = MyraVoiceService.instance?.announceCall(name) ?: false
+        if (!handled) {
+            isInCallMode = true
+            addChat("📞 $name ka call aa raha hai — bolo 'uthao' ya 'reject'", false)
+            setStatus("📞 $name")
             startOfflineListen()
         }
     }
@@ -456,8 +355,8 @@ class MainActivity : AppCompatActivity() {
             val accept = listOf("uthao", "utha", "haan", "accept", "answer", "receive", "ধরো", "উঠাও", "রিসিভ", "হ্যাঁ").any { t.contains(it) }
             val reject = listOf("reject", "nahi", "mat", "cut", "decline", "কাটো", "না", "রিজেক্ট").any { t.contains(it) }
             when {
-                accept -> viewModel.execute("answer_call", emptyMap()) { addChat(it, false) }
-                reject -> viewModel.execute("reject_call", emptyMap()) { addChat(it, false) }
+                accept -> executor.execute("answer_call", emptyMap()) { addChat(it, false) }
+                reject -> executor.execute("reject_call", emptyMap()) { addChat(it, false) }
                 else -> addChat("Bolo 'uthao' ya 'reject'", false)
             }
             return
@@ -467,7 +366,7 @@ class MainActivity : AppCompatActivity() {
         if (cmd == null) {
             addChat("Offline hoon — abhi sirf commands samajh sakti hoon (e.g. 'YouTube kholo')", false)
         } else {
-            viewModel.execute(cmd.type, cmd.params) { addChat(it, false) }
+            executor.execute(cmd.type, cmd.params) { addChat(it, false) }
         }
     }
 }
