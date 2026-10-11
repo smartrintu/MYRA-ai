@@ -54,6 +54,7 @@ class MainActivity : AppCompatActivity() {
     private var isMuted = false
     private var greetingSent = false
     private var askedOptional = false
+    private var askedBattery = false
     private var isInCallMode = false
     private val inputBuffer = StringBuilder()
     private val outputBuffer = StringBuilder()
@@ -108,10 +109,8 @@ class MainActivity : AppCompatActivity() {
         handleIncomingCallIntent(intent)
     }
 
-    override fun onPause() {
-        super.onPause()
-        audioEngine?.isMuted = true
-    }
+    // NOTE: mic is intentionally NOT muted in onPause() any more, so MYRA keeps listening in
+    // the background / on the lock screen (the microphone foreground service keeps it alive).
 
     override fun onResume() {
         super.onResume()
@@ -243,8 +242,27 @@ class MainActivity : AppCompatActivity() {
             if (has(Manifest.permission.READ_PHONE_STATE)) {
                 ContextCompat.startForegroundService(this, Intent(this, CallMonitorService::class.java))
             }
-            if (Settings.canDrawOverlays(this)) {
+            // Always start the service (it owns the microphone foreground-service state);
+            // the floating orb itself is only drawn if overlay permission is granted.
+            if (has(Manifest.permission.RECORD_AUDIO)) {
                 ContextCompat.startForegroundService(this, Intent(this, MyraOverlayService::class.java))
+            }
+            askBatteryExemption()
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun askBatteryExemption() {
+        try {
+            val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+            if (!pm.isIgnoringBatteryOptimizations(packageName) && !askedBattery) {
+                askedBattery = true
+                startActivity(
+                    Intent(
+                        Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                        android.net.Uri.parse("package:$packageName")
+                    )
+                )
             }
         } catch (_: Exception) {
         }
