@@ -73,11 +73,10 @@ class SettingsActivity : AppCompatActivity() {
             else -> b.radioLangHinglish.isChecked = true
         }
         b.muteWhileSpeakingSwitch.isChecked = SecurePrefs.muteWhileSpeaking
-        b.shayariSwitch.isChecked = SecurePrefs.shayariEnabled
         b.pickPhotoBtn.setOnClickListener { pickPhoto.launch("image/*") }
         b.removePhotoBtn.setOnClickListener {
             AvatarStore.remove(this)
-            Toast.makeText(this, "Cartoon avatar wapas ✅", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Default photo wapas ✅", Toast.LENGTH_SHORT).show()
         }
         b.contactBtn.setOnClickListener { startActivity(Intent(this, ContactActivity::class.java)) }
 
@@ -170,7 +169,6 @@ class SettingsActivity : AppCompatActivity() {
             R.id.radioLangEnglish -> "ENGLISH"
             else -> "HINGLISH"
         }
-        SecurePrefs.shayariEnabled = b.shayariSwitch.isChecked
         SecurePrefs.muteWhileSpeaking = b.muteWhileSpeakingSwitch.isChecked
         SecurePrefs.setPrimeContacts(contacts)
         Toast.makeText(this, "Settings apply ho gayi ✅", Toast.LENGTH_SHORT).show()

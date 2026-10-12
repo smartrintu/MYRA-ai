@@ -21,6 +21,7 @@ import android.telecom.TelecomManager
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.myra.assistant.data.SecurePrefs
+import com.myra.assistant.data.TerminalLog
 import com.myra.assistant.license.LicenseManager
 import com.myra.assistant.service.MyraVoiceService
 import com.myra.assistant.ui.theme.ThemeManager
@@ -42,6 +43,7 @@ class CommandExecutor(context: Context) {
 
     fun execute(type: String, params: Map<String, String>, onResult: (String) -> Unit) {
         scope.launch {
+            TerminalLog.begin(type + params.entries.joinToString("") { " ${it.key}=\"${it.value.take(60)}\"" })
             val result = try {
                 guarded(type, params)
             } catch (e: CommandException) {
@@ -49,6 +51,8 @@ class CommandExecutor(context: Context) {
             } catch (e: Exception) {
                 "error: ${e.javaClass.simpleName} ${e.message ?: ""}".trim()
             }
+            if (result.startsWith("error")) TerminalLog.err(result.take(160)) else TerminalLog.ok(result.take(160))
+            TerminalLog.end()
             withContext(Dispatchers.Main) { onResult(result) }
         }
     }
@@ -304,10 +308,10 @@ class CommandExecutor(context: Context) {
         start(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$digits?text=" + Uri.encode(message))))
         val svc = AccessibilityHelperService.instance
         if (svc != null && message.isNotBlank()) {
-            Thread.sleep(3000)
-            repeat(6) {
+            Thread.sleep(1800)
+            repeat(10) {
                 if (svc.clickFirstWithDescription("send")) return "success: WhatsApp message sent to $target"
-                Thread.sleep(800)
+                Thread.sleep(400)
             }
             return "success: WhatsApp chat opened for $target, but the send button was not found — user must press send"
         }
@@ -325,10 +329,10 @@ class CommandExecutor(context: Context) {
         }
         val svc = AccessibilityHelperService.instance
             ?: return "success: YouTube search for '$query' opened, but accessibility is OFF so it could not auto-play — user must tap the video"
-        Thread.sleep(3000)
-        repeat(6) {
+        Thread.sleep(1800)
+        repeat(10) {
             if (svc.clickFirstWithDescription("play video")) return "success: playing '$query' on YouTube"
-            Thread.sleep(800)
+            Thread.sleep(400)
         }
         svc.tapAtFraction(0.5f, 0.33f)
         return "success: opened YouTube results for '$query' and tapped the first result (not fully verified)"
@@ -366,10 +370,16 @@ class CommandExecutor(context: Context) {
         val prompt = if (current != null) WebsiteBuilder.editSitePrompt(current, text) else WebsiteBuilder.newSitePrompt(text)
         val slug = WebsiteBuilder.slug(name)
         scope.launch {
+            TerminalLog.begin("myra build-website --name $slug")
             try {
-                val html = WebsiteBuilder.generate(prompt)
+                TerminalLog.info("⏳ Gemini code likh raha hai, live dekho...\n")
+                val html = WebsiteBuilder.generate(prompt) { TerminalLog.append(it) }
+                TerminalLog.ok("\ncode ready: ${html.length} characters")
                 val file = WebsiteBuilder.save(ctx, slug, html)
+                TerminalLog.ok("saved: ${file.name}")
                 val saved = WebsiteBuilder.saveToDownloads(ctx, slug, html)
+                if (saved != null) TerminalLog.ok("copied to $saved")
+                TerminalLog.info("opening preview...")
                 start(Intent(ctx, WebsitePreviewActivity::class.java).putExtra("path", file.absolutePath))
                 MyraVoiceService.instance?.tell(
                     "The website '$slug' is finished and is now open on the screen" +
@@ -377,7 +387,10 @@ class CommandExecutor(context: Context) {
                         ". Tell the user the good news in your personality and mention the Share and Download buttons at the bottom."
                 )
             } catch (e: Exception) {
+                TerminalLog.err("build failed: ${e.message}")
                 MyraVoiceService.instance?.tell("Building the website failed: ${e.message}. Tell the user honestly and offer to try again.")
+            } finally {
+                TerminalLog.end()
             }
         }
         return "success: started building the website in the background, it takes about 30-60 seconds; you will get a message when it is ready"
@@ -401,9 +414,9 @@ class CommandExecutor(context: Context) {
         }
         val svc = AccessibilityHelperService.instance
             ?: throw CommandException("accessibility service is disabled, cannot swipe to unlock")
-        Thread.sleep(700)
+        Thread.sleep(400)
         svc.swipeUp()
-        Thread.sleep(600)
+        Thread.sleep(350)
         return if (!km.isKeyguardLocked) "success: phone unlocked" else "error: swiped but the phone is still locked"
     }
 

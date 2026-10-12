@@ -143,7 +143,7 @@ class MyraVoiceService : Service() {
             uiListener?.onMic(muted, true)
             if (!greetingSent) {
                 greetingSent = true
-                main.postDelayed({ sendGreeting() }, 600)
+                main.postDelayed({ sendGreeting() }, 150)
             }
         }
         l.onDisconnected = {
@@ -292,13 +292,6 @@ class MyraVoiceService : Service() {
     fun tell(text: String) {
         val l = live ?: return
         if (l.isConnected) l.sendText(text)
-    }
-
-    fun requestShayari() {
-        val l = live ?: return
-        if (!l.isConnected) return
-        if (muted) setMuted(false)
-        l.sendText("Please recite one short, original romantic shayari for me right now, in my chosen language and in your sweet girlfriend style, softly and slowly.")
     }
 
     // ------------------------------------------------------------------ helpers

@@ -221,6 +221,15 @@ class GeminiLiveClient(private val context: Context) {
             if (LicenseManager.allowsControl(context)) {
                 put("tools", JSONArray().put(JSONObject().put("functionDeclarations", FunctionDeclarations.build())))
             }
+            // Faster turn-taking: MYRA decides you finished speaking after ~0.35 s of silence instead of the slow default.
+            put("realtimeInputConfig", JSONObject().put(
+                "automaticActivityDetection", JSONObject()
+                    .put("disabled", false)
+                    .put("startOfSpeechSensitivity", "START_SENSITIVITY_HIGH")
+                    .put("endOfSpeechSensitivity", "END_SENSITIVITY_HIGH")
+                    .put("prefixPaddingMs", 20)
+                    .put("silenceDurationMs", 350)
+            ))
             put("sessionResumption", JSONObject().apply {
                 resumeHandle?.let { put("handle", it) }
             })
@@ -291,7 +300,7 @@ class GeminiLiveClient(private val context: Context) {
             while (isActive) {
                 delay(8000)
                 if (isConnected && System.currentTimeMillis() - lastAudioSentAt > 7500) {
-                    sendAudio(ByteArray(3200)) // ~100 ms of silence
+                    sendAudio(ByteArray(1280)) // ~40 ms of silence
                 }
             }
         }

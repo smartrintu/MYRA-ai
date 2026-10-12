@@ -39,7 +39,7 @@ class AudioEngine(private val context: Context) {
     companion object {
         const val MIC_RATE = 16000
         const val OUT_RATE = 24000
-        const val CHUNK_BYTES = 3200 // ~100 ms @16 kHz PCM16
+        const val CHUNK_BYTES = 1280 // ~40 ms @16 kHz PCM16 (smaller = MYRA hears you sooner)
     }
 
     var onAudioChunk: ((ByteArray) -> Unit)? = null           // IO thread
@@ -133,6 +133,7 @@ class AudioEngine(private val context: Context) {
             .build()
         val t = AudioTrack.Builder()
             .setAudioAttributes(attrs)
+            .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
             .setAudioFormat(
                 AudioFormat.Builder()
                     .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
@@ -150,9 +151,9 @@ class AudioEngine(private val context: Context) {
         playJob = scope.launch {
             var idle = 0
             while (isActive) {
-                val c = queue.poll(100, TimeUnit.MILLISECONDS)
+                val c = queue.poll(40, TimeUnit.MILLISECONDS)
                 if (c == null) {
-                    if (speaking && ++idle >= 6) {
+                    if (speaking && ++idle >= 12) {
                         speaking = false
                         main.post { onSpeakingStopped?.invoke() }
                     }

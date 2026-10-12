@@ -57,8 +57,9 @@ object WebsiteBuilder {
         Return the COMPLETE updated HTML file only, starting with <!DOCTYPE html>. No explanations and no markdown fences.
     """.trimIndent()
 
+    /** Streams the answer (SSE) so the code can be shown live in the terminal while it is being written. */
     @Throws(CommandException::class)
-    fun generate(prompt: String): String {
+    fun generate(prompt: String, onChunk: ((String) -> Unit)? = null): String {
         val key = SecurePrefs.apiKey.trim()
         if (key.isEmpty()) throw CommandException("Gemini API key missing")
         val body = JSONObject()
@@ -70,17 +71,33 @@ object WebsiteBuilder {
                     .put("thinkingConfig", JSONObject().put("thinkingBudget", 0))
             )
         val req = Request.Builder()
-            .url("https://generativelanguage.googleapis.com/v1beta/${GeminiModels.TEXT_MODEL}:generateContent?key=$key")
+            .url("https://generativelanguage.googleapis.com/v1beta/${GeminiModels.TEXT_MODEL}:streamGenerateContent?alt=sse&key=$key")
             .post(body.toString().toRequestBody("application/json".toMediaType()))
             .build()
         http.newCall(req).execute().use { r ->
-            val txt = r.body?.string() ?: ""
-            if (!r.isSuccessful) throw CommandException("Gemini error ${r.code}: ${txt.take(160)}")
-            val parts = JSONObject(txt).optJSONArray("candidates")?.optJSONObject(0)
-                ?.optJSONObject("content")?.optJSONArray("parts")
-                ?: throw CommandException("empty answer from Gemini")
+            if (!r.isSuccessful) {
+                val txt = r.body?.string() ?: ""
+                throw CommandException("Gemini error ${r.code}: ${txt.take(160)}")
+            }
+            val src = r.body?.source() ?: throw CommandException("empty answer from Gemini")
             val sb = StringBuilder()
-            for (i in 0 until parts.length()) sb.append(parts.optJSONObject(i)?.optString("text") ?: "")
+            while (true) {
+                val line = src.readUtf8Line() ?: break
+                if (!line.startsWith("data:")) continue
+                val json = line.removePrefix("data:").trim()
+                if (json.isEmpty()) continue
+                val obj = try { JSONObject(json) } catch (_: Exception) { continue }
+                val parts = obj.optJSONArray("candidates")?.optJSONObject(0)
+                    ?.optJSONObject("content")?.optJSONArray("parts") ?: continue
+                for (i in 0 until parts.length()) {
+                    val t = parts.optJSONObject(i)?.optString("text") ?: ""
+                    if (t.isNotEmpty()) {
+                        sb.append(t)
+                        onChunk?.invoke(t)
+                    }
+                }
+            }
+            if (sb.isBlank()) throw CommandException("empty answer from Gemini")
             return cleanHtml(sb.toString())
         }
     }

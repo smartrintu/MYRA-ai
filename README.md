@@ -26,12 +26,16 @@
 
 ## Naya: cute UI, GF style aur website builder
 - Cute animated ladki (aankhein jhapakti hain, hothon se bolti hai, tap karne par wink + hearts), floating hearts, pink theme.
-- "💌 Shayari sunao" button; GF mode mein MYRA beech-beech mein romantic shayari bhi sunati hai.
 - Website: bolo "mere liye ek photography studio ki website bana do" — MYRA ~1 minute mein poori website banakar preview kholti hai (Share / Download buttons).
   PRO/TRIAL key chahiye. Website Download/MYRA folder mein bhi save hoti hai; GitHub Pages ya Netlify Drop se free publish kar sakte ho.
 
 ## Naya (v3)
 - Avatar: semi-realistic drawn portrait + **real photo** option (Settings > "REAL PHOTO CHUNO"). Photo mein saans, glow, hearts animation aati hai.
-- Shayari mode ON/OFF (Settings). OFF par button chhup jata hai aur MYRA shayari nahi sunati.
 - Multicolor theme: bolo "interface ka color nila kar do" ya "multicolor kar do" (rainbow animation).
 - Contact page (Settings > CONTACT) aur Activation screen par bhi "CONTACT KARO" button.
+
+## Naya (v4)
+- Shayari mode hata diya gaya (button, setting aur auto-shayari sab).
+- Cute girl default photo: image ko `app/src/main/res/drawable-nodpi/myra_girl.jpg` naam se rakho, app use default avatar bana legi (Settings se apni photo chunoge to wo upar rahegi).
+- MYRA ke jawab tez: mic chunk 40 ms, turn detection fast (silence 350 ms), low-latency speaker, chhote jawab, kam waiting in actions.
+- **Live terminal**: background me MYRA jo bhi command chalati hai ya website banati hai (code likhte hue live), wo main screen ke neeche terminal panel me dikhta hai. ✕ se band karo; kaam khatam hone ke 12 sec baad apne aap chhup jata hai.

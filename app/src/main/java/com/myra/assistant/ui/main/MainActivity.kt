@@ -31,6 +31,7 @@ import com.myra.assistant.R
 import com.myra.assistant.ai.CommandParser
 import com.myra.assistant.data.AvatarStore
 import com.myra.assistant.data.SecurePrefs
+import com.myra.assistant.data.TerminalLog
 import com.myra.assistant.databinding.ActivityMainBinding
 import com.myra.assistant.license.LicenseManager
 import com.myra.assistant.ui.license.ActivationActivity
@@ -47,7 +48,7 @@ import java.util.Date
 import java.util.Locale
 
 /** UI only. The microphone + Gemini session live in MyraVoiceService so they survive background/lock. */
-class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
+class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener, TerminalLog.Listener {
 
     private lateinit var binding: ActivityMainBinding
     private val chatAdapter = ChatAdapter()
@@ -124,6 +125,8 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
         super.onStart()
         if (!::binding.isInitialized) return
         MyraVoiceService.uiListener = this
+        TerminalLog.listener = this
+        if (TerminalLog.busy) onTerminal(TerminalLog.text(), true)
         syncFromService()
         ThemeManager.onChanged = { applyThemeNow() }
         applyThemeNow()
@@ -131,7 +134,9 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
 
     override fun onStop() {
         if (MyraVoiceService.uiListener === this) MyraVoiceService.uiListener = null
+        if (TerminalLog.listener === this) TerminalLog.listener = null
         handler.removeCallbacks(themeTicker)
+        handler.removeCallbacks(hideTerminal)
         ThemeManager.onChanged = null
         super.onStop()
     }
@@ -146,12 +151,10 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
         }
         val n = SecurePrefs.userName.trim()
         binding.subtitleText.text = if (n.isEmpty()) "AI COMPANION" else "💕 $n's MYRA"
-        binding.shayariBtn.visibility = if (SecurePrefs.shayariEnabled) android.view.View.VISIBLE else android.view.View.GONE
-        val f = AvatarStore.file(this)
-        val stamp = if (f.exists()) f.lastModified() else 0L
+        val stamp = AvatarStore.stamp(this)
         if (stamp != avatarStamp) {
             avatarStamp = stamp
-            binding.orbView.setPhoto(if (stamp == 0L) null else AvatarStore.load(this))
+            binding.orbView.setPhoto(AvatarStore.load(this))
         }
     }
 
@@ -182,11 +185,6 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
         ).apply {
             shape = GradientDrawable.OVAL
             setStroke(dp(3), 0x66FFFFFF)
-        }
-        binding.shayariBtn.background = GradientDrawable().apply {
-            cornerRadius = dp(22).toFloat()
-            setColor((pal.p and 0x00FFFFFF) or 0x33000000)
-            setStroke(dp(1), pal.soft)
         }
         binding.titleText.setTextColor(pal.soft)
         binding.subtitleText.setTextColor(pal.text)
@@ -220,6 +218,19 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
         binding.redOverlay.animate().cancel()
         binding.redOverlay.animate().alpha(if (active) 0.10f else 0f)
             .setDuration(if (active) 250 else 450).start()
+    }
+
+    private val hideTerminal = Runnable { binding.terminalPanel.visibility = android.view.View.GONE }
+
+    /** Live terminal: shows background work (commands, website code being written). */
+    override fun onTerminal(text: String, busy: Boolean) {
+        if (!::binding.isInitialized) return
+        handler.removeCallbacks(hideTerminal)
+        binding.terminalPanel.visibility = android.view.View.VISIBLE
+        binding.terminalTitle.text = if (busy) "● MYRA TERMINAL — kaam chal raha hai..." else "✔ MYRA TERMINAL — ho gaya"
+        binding.terminalText.text = text
+        binding.terminalScroll.post { binding.terminalScroll.fullScroll(android.view.View.FOCUS_DOWN) }
+        if (!busy) handler.postDelayed(hideTerminal, 12_000)
     }
 
     override fun onAmplitude(a: Float) {
@@ -284,11 +295,7 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
         }
         updateEnableSwitch()
 
-        binding.shayariBtn.setOnClickListener {
-            val svc = MyraVoiceService.instance
-            if (svc != null && MyraVoiceService.connected) svc.requestShayari()
-            else Toast.makeText(this, "Pehle MYRA ON karo aur connect hone do 💕", Toast.LENGTH_SHORT).show()
-        }
+        binding.terminalClose.setOnClickListener { binding.terminalPanel.visibility = android.view.View.GONE }
 
         binding.settingsBtn.setOnClickListener {
             settingsLauncher.launch(Intent(this, SettingsActivity::class.java))

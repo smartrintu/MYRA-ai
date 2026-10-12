@@ -12,9 +12,25 @@ import java.io.File
 object AvatarStore {
     fun file(ctx: Context) = File(ctx.filesDir, "avatar.jpg")
 
+    /** Built-in default photo: put the image at res/drawable-nodpi/myra_girl.jpg (or .png). */
+    private fun defaultResId(ctx: Context) = ctx.resources.getIdentifier("myra_girl", "drawable", ctx.packageName)
+
+    /** Changes whenever the shown photo changes (custom photo, default photo or none). */
+    fun stamp(ctx: Context): Long {
+        val f = file(ctx)
+        return when {
+            f.exists() -> f.lastModified()
+            defaultResId(ctx) != 0 -> 1L
+            else -> 0L
+        }
+    }
+
+    /** The photo the user picked, else the built-in default girl photo, else null (drawn portrait). */
     fun load(ctx: Context): Bitmap? {
         val f = file(ctx)
-        return if (f.exists()) BitmapFactory.decodeFile(f.absolutePath) else null
+        if (f.exists()) BitmapFactory.decodeFile(f.absolutePath)?.let { return it }
+        val id = defaultResId(ctx)
+        return if (id != 0) BitmapFactory.decodeResource(ctx.resources, id) else null
     }
 
     fun remove(ctx: Context) {

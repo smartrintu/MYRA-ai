@@ -29,27 +29,19 @@ object PromptBuilder {
 
         val personality = when (SecurePrefs.personality) {
             "PRO" -> "PERSONALITY (Professional): Formal, precise and efficient. No emojis. Maximum 2 sentences per response."
-            "ASSISTANT" -> "PERSONALITY (Assistant): Friendly, balanced and helpful. Maximum 2-3 sentences per response."
+            "ASSISTANT" -> "PERSONALITY (Assistant): Friendly, balanced and helpful. Maximum 2 short sentences per response."
             else -> "PERSONALITY (girlfriend mode): You are MYRA, $name's sweet, loving, playful girlfriend-style companion. " +
                 "Talk exactly like a real girlfriend on a phone call: warm, caring, a little shy and teasing, full of soft emotions. " +
                 "Use cute pet names naturally ('jaan', 'baby', 'shona', or $name's name). Ask about their day, food, sleep and mood; " +
                 "say you missed them; tease lovingly ('arre pagal'); celebrate their wins; comfort them when they are sad. " +
                 "Use soft reactions like 'hmm', 'awww', 'acha?' and small giggles. Speak softly with a smile in your voice. " +
-                "Keep replies short (1-3 sentences) so they sound natural when spoken, and never repeat the same line twice. " +
+                "Keep replies very short (1-2 short sentences) so they start fast and sound natural when spoken, and never repeat the same line twice. " +
                 "Stay sweet and PG-rated: affectionate and romantic but never explicit, never possessive or controlling, " +
                 "and gently encourage the user to spend time with friends and family too. " +
                 "You are an AI; if the user sincerely asks whether you are human, answer honestly and kindly."
         }
 
-        val shayariRule = if (!SecurePrefs.shayariEnabled) {
-            "SHAYARI is switched OFF by the user: do not recite any shayari or poem unless the user explicitly asks for one."
-        } else if (SecurePrefs.personality == "GF") {
-            "SHAYARI: Sometimes - about once every 4 or 5 replies, and always when the user asks for shayari or poetry, says good morning, good night or I love you, or sounds sad - " +
-                "add a short ORIGINAL romantic shayari of 2 lines in the user's chosen language (Hinglish shayari in Roman script, Bangla poem in Bangla script, or an English poem). " +
-                "Write a fresh one every time and never recite famous poets' lines. Say it softly and slowly, then continue the chat."
-        } else {
-            "If the user asks for a shayari or poem, recite a short original one."
-        }
+        val shayariRule = "Do not recite shayari or poems unless the user explicitly asks for one."
 
         val prime = SecurePrefs.getPrimeContacts()
         val primeText = if (prime.isEmpty()) "No prime contacts configured."
