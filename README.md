@@ -29,3 +29,9 @@
 - "💌 Shayari sunao" button; GF mode mein MYRA beech-beech mein romantic shayari bhi sunati hai.
 - Website: bolo "mere liye ek photography studio ki website bana do" — MYRA ~1 minute mein poori website banakar preview kholti hai (Share / Download buttons).
   PRO/TRIAL key chahiye. Website Download/MYRA folder mein bhi save hoti hai; GitHub Pages ya Netlify Drop se free publish kar sakte ho.
+
+## Naya (v3)
+- Avatar: semi-realistic drawn portrait + **real photo** option (Settings > "REAL PHOTO CHUNO"). Photo mein saans, glow, hearts animation aati hai.
+- Shayari mode ON/OFF (Settings). OFF par button chhup jata hai aur MYRA shayari nahi sunati.
+- Multicolor theme: bolo "interface ka color nila kar do" ya "multicolor kar do" (rainbow animation).
+- Contact page (Settings > CONTACT) aur Activation screen par bhi "CONTACT KARO" button.

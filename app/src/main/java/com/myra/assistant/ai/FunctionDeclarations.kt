@@ -93,5 +93,7 @@ object FunctionDeclarations {
             ), listOf("description")))
         put(fn("edit_website", "Change the website that was built last (colors, text, new sections, etc.).",
             mapOf("instructions" to prop("STRING", "What to change")), listOf("instructions")))
+        put(fn("change_theme", "Change the colors of MYRA's interface. Use 'multicolor' for the animated rainbow theme.",
+            mapOf("color" to prop("STRING", "Color name (pink, red, blue, green, purple, orange, yellow, teal, gold), a #RRGGBB code, or multicolor")), listOf("color")))
     }
 }

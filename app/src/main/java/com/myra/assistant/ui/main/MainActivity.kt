@@ -8,6 +8,8 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.os.SystemClock
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
@@ -27,6 +29,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.myra.assistant.R
 import com.myra.assistant.ai.CommandParser
+import com.myra.assistant.data.AvatarStore
 import com.myra.assistant.data.SecurePrefs
 import com.myra.assistant.databinding.ActivityMainBinding
 import com.myra.assistant.license.LicenseManager
@@ -35,6 +38,7 @@ import com.myra.assistant.service.CallMonitorService
 import com.myra.assistant.service.MyraOverlayService
 import com.myra.assistant.service.MyraVoiceService
 import com.myra.assistant.ui.settings.SettingsActivity
+import com.myra.assistant.ui.theme.ThemeManager
 import com.myra.assistant.viewmodel.CommandExecutor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -53,6 +57,13 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
     private var isInCallMode = false
     private var lastSyncedTs = 0L
     private var suppressSwitch = false
+    private var avatarStamp = -1L
+    private val themeTicker = object : Runnable {
+        override fun run() {
+            applyTheme()
+            if (ThemeManager.isRainbow()) handler.postDelayed(this, 150)
+        }
+    }
     private var recognizer: SpeechRecognizer? = null
     private val handler = Handler(Looper.getMainLooper())
 
@@ -114,10 +125,14 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
         if (!::binding.isInitialized) return
         MyraVoiceService.uiListener = this
         syncFromService()
+        ThemeManager.onChanged = { applyThemeNow() }
+        applyThemeNow()
     }
 
     override fun onStop() {
         if (MyraVoiceService.uiListener === this) MyraVoiceService.uiListener = null
+        handler.removeCallbacks(themeTicker)
+        ThemeManager.onChanged = null
         super.onStop()
     }
 
@@ -131,12 +146,55 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener {
         }
         val n = SecurePrefs.userName.trim()
         binding.subtitleText.text = if (n.isEmpty()) "AI COMPANION" else "💕 $n's MYRA"
+        binding.shayariBtn.visibility = if (SecurePrefs.shayariEnabled) android.view.View.VISIBLE else android.view.View.GONE
+        val f = AvatarStore.file(this)
+        val stamp = if (f.exists()) f.lastModified() else 0L
+        if (stamp != avatarStamp) {
+            avatarStamp = stamp
+            binding.orbView.setPhoto(if (stamp == 0L) null else AvatarStore.load(this))
+        }
     }
 
     override fun onDestroy() {
         try { unregisterReceiver(callEndedReceiver) } catch (_: Exception) {}
         recognizer?.destroy()
         super.onDestroy()
+    }
+
+    // ------------------------------------------------------------------ theme
+
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+
+    private fun applyThemeNow() {
+        handler.removeCallbacks(themeTicker)
+        themeTicker.run()
+        chatAdapter.refresh()
+    }
+
+    private fun applyTheme() {
+        val t = (SystemClock.uptimeMillis() % 1_000_000L) / 1000f
+        val pal = ThemeManager.palette(t)
+        binding.root.background = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(pal.bgTop, pal.bgMid, pal.bgBottom)
+        )
+        binding.micButton.background = GradientDrawable(
+            GradientDrawable.Orientation.TL_BR, intArrayOf(pal.p, pal.s)
+        ).apply {
+            shape = GradientDrawable.OVAL
+            setStroke(dp(3), 0x66FFFFFF)
+        }
+        binding.shayariBtn.background = GradientDrawable().apply {
+            cornerRadius = dp(22).toFloat()
+            setColor((pal.p and 0x00FFFFFF) or 0x33000000)
+            setStroke(dp(1), pal.soft)
+        }
+        binding.titleText.setTextColor(pal.soft)
+        binding.subtitleText.setTextColor(pal.text)
+        binding.statusText.setTextColor(pal.text)
+        binding.heartsView.setPalette(intArrayOf(pal.soft, pal.p, pal.s, pal.text))
+        binding.orbView.setThemeColors(pal.p, pal.s)
+        binding.waveformView.setColor(pal.p)
+        chatAdapter.setTheme(pal.p, pal.s)
     }
 
     // ------------------------------------------------------------------ UiListener (called on main thread)

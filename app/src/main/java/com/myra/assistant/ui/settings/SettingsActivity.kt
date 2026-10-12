@@ -12,16 +12,19 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.myra.assistant.R
 import com.myra.assistant.ai.GeminiModels
+import com.myra.assistant.data.AvatarStore
 import com.myra.assistant.data.PrimeContact
 import com.myra.assistant.data.SecurePrefs
 import com.myra.assistant.databinding.ActivitySettingsBinding
 import com.myra.assistant.license.LicenseManager
 import com.myra.assistant.service.AccessibilityHelperService
+import com.myra.assistant.ui.contact.ContactActivity
 import com.myra.assistant.ui.license.ActivationActivity
 
 class SettingsActivity : AppCompatActivity() {
@@ -29,6 +32,17 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var b: ActivitySettingsBinding
     private val contacts = mutableListOf<PrimeContact>()
     private lateinit var adapter: PrimeContactAdapter
+
+    private val pickPhoto = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            val ok = AvatarStore.saveFromUri(this, uri)
+            Toast.makeText(
+                this,
+                if (ok) "Photo set ho gayi ✅ (Save dabao, phir main screen par dekho)" else "Photo load nahi hui",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,6 +73,13 @@ class SettingsActivity : AppCompatActivity() {
             else -> b.radioLangHinglish.isChecked = true
         }
         b.muteWhileSpeakingSwitch.isChecked = SecurePrefs.muteWhileSpeaking
+        b.shayariSwitch.isChecked = SecurePrefs.shayariEnabled
+        b.pickPhotoBtn.setOnClickListener { pickPhoto.launch("image/*") }
+        b.removePhotoBtn.setOnClickListener {
+            AvatarStore.remove(this)
+            Toast.makeText(this, "Cartoon avatar wapas ✅", Toast.LENGTH_SHORT).show()
+        }
+        b.contactBtn.setOnClickListener { startActivity(Intent(this, ContactActivity::class.java)) }
 
         contacts.addAll(SecurePrefs.getPrimeContacts())
         adapter = PrimeContactAdapter(contacts) { pos ->
@@ -149,6 +170,7 @@ class SettingsActivity : AppCompatActivity() {
             R.id.radioLangEnglish -> "ENGLISH"
             else -> "HINGLISH"
         }
+        SecurePrefs.shayariEnabled = b.shayariSwitch.isChecked
         SecurePrefs.muteWhileSpeaking = b.muteWhileSpeakingSwitch.isChecked
         SecurePrefs.setPrimeContacts(contacts)
         Toast.makeText(this, "Settings apply ho gayi ✅", Toast.LENGTH_SHORT).show()

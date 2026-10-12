@@ -54,6 +54,16 @@ object SecurePrefs {
         get() = prefs.getBoolean("myra_enabled", true)
         set(v) = prefs.edit().putBoolean("myra_enabled", v).apply()
 
+    /** Shayari mode: ON = MYRA recites shayari now and then (and the button is shown). */
+    var shayariEnabled: Boolean
+        get() = prefs.getBoolean("shayari_enabled", true)
+        set(v) = prefs.edit().putBoolean("shayari_enabled", v).apply()
+
+    /** pink, red, blue... , "#RRGGBB" or "RAINBOW" (animated multicolor). */
+    var theme: String
+        get() = prefs.getString("ui_theme", "pink") ?: "pink"
+        set(v) = prefs.edit().putString("ui_theme", v).apply()
+
     var licenseKey: String
         get() = prefs.getString("license_key", "") ?: ""
         set(v) = prefs.edit().putString("license_key", v).apply()

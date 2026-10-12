@@ -11,6 +11,7 @@ import com.myra.assistant.databinding.ActivityActivationBinding
 import com.myra.assistant.license.LicenseConfig
 import com.myra.assistant.license.LicenseManager
 import com.myra.assistant.license.Plan
+import com.myra.assistant.ui.contact.ContactActivity
 import com.myra.assistant.ui.main.MainActivity
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -40,6 +41,7 @@ class ActivationActivity : AppCompatActivity() {
                 .putExtra(Intent.EXTRA_TEXT, "MYRA Device ID: $id")
             startActivity(Intent.createChooser(send, "Device ID bhejo"))
         }
+        b.contactBtn.setOnClickListener { startActivity(Intent(this, ContactActivity::class.java)) }
         b.activateBtn.setOnClickListener { activate() }
         showCurrent()
     }

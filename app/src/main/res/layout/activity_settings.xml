@@ -20,6 +20,16 @@
             android:textColor="#FF4D8D"
             android:textSize="22sp" />
 
+        <Button
+            android:id="@+id/contactBtn"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_prime_badge"
+            android:backgroundTint="@null"
+            android:text="📞 CONTACT / SUPPORT"
+            android:textColor="#FF8FB8" />
+
         <TextView style="@style/MyraLabel" android:text="GEMINI API KEY" />
         <EditText
             android:id="@+id/apiKeyInput"
@@ -89,6 +99,35 @@
                 style="@style/MyraRadio"
                 android:text="English" />
         </RadioGroup>
+
+        <TextView style="@style/MyraLabel" android:text="AVATAR (ladki ka chehra)" />
+        <Button
+            android:id="@+id/pickPhotoBtn"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:background="@drawable/bg_prime_badge"
+            android:backgroundTint="@null"
+            android:text="📷 REAL PHOTO CHUNO"
+            android:textColor="#FF8FB8" />
+        <Button
+            android:id="@+id/removePhotoBtn"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_prime_badge"
+            android:backgroundTint="@null"
+            android:text="CARTOON AVATAR WAPAS"
+            android:textColor="#FF8FB8" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/shayariSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:checked="true"
+            android:text="💌 Shayari mode (ON = MYRA shayari sunayegi)"
+            android:textColor="#FFF0F6"
+            android:textSize="13sp" />
 
         <com.google.android.material.switchmaterial.SwitchMaterial
             android:id="@+id/muteWhileSpeakingSwitch"

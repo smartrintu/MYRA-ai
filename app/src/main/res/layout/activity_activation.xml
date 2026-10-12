@@ -77,6 +77,16 @@
             android:textColor="#C9A7E8"
             android:textSize="12sp" />
 
+        <Button
+            android:id="@+id/contactBtn"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_prime_badge"
+            android:backgroundTint="@null"
+            android:text="📞 CONTACT KARO"
+            android:textColor="#FF8FB8" />
+
         <TextView style="@style/MyraLabel" android:text="ACTIVATION KEY" />
         <EditText
             android:id="@+id/keyInput"

@@ -23,6 +23,7 @@ import androidx.core.content.ContextCompat
 import com.myra.assistant.data.SecurePrefs
 import com.myra.assistant.license.LicenseManager
 import com.myra.assistant.service.MyraVoiceService
+import com.myra.assistant.ui.theme.ThemeManager
 import com.myra.assistant.ui.website.WebsitePreviewActivity
 import com.myra.assistant.service.AccessibilityHelperService
 import kotlinx.coroutines.CoroutineScope
@@ -157,6 +158,11 @@ class CommandExecutor(context: Context) {
         }
         "build_website" -> buildWebsite(p["description"] ?: throw CommandException("description missing"), p["name"], false)
         "edit_website" -> buildWebsite(p["instructions"] ?: throw CommandException("instructions missing"), p["name"] ?: "edited-site", true)
+        "change_theme" -> {
+            val col = p["color"] ?: throw CommandException("color missing")
+            if (ThemeManager.set(col)) "success: interface color changed to $col"
+            else "error: unknown color '$col' (use a color name, a #hex code, or 'multicolor')"
+        }
         "unlock_phone" -> unlockPhone()
         else -> "error: unknown command $type"
     }

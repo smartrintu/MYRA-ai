@@ -66,6 +66,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="casual"
                     android:letterSpacing="0.2"
+                    android:id="@+id/titleText"
                     android:text="MYRA"
                     android:textColor="#FF8FB8"
                     android:textSize="26sp"

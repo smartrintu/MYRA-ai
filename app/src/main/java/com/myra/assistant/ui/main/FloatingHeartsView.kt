@@ -25,13 +25,17 @@ class FloatingHeartsView @JvmOverloads constructor(
     private val hearts = ArrayList<H>()
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val path = Path()
-    private val colors = intArrayOf(
+    private var colors = intArrayOf(
         Color.parseColor("#FF8FB8"), Color.parseColor("#FFC2D4"), Color.parseColor("#C9A7FF"),
         Color.parseColor("#FF4D8D"), Color.parseColor("#FFD1E3")
     )
     private var lively = false
     private var last = SystemClock.uptimeMillis()
     private var animator: ValueAnimator? = null
+
+    fun setPalette(c: IntArray) {
+        if (c.isNotEmpty()) colors = c
+    }
 
     fun setLively(on: Boolean) {
         lively = on

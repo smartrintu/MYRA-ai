@@ -41,7 +41,9 @@ object PromptBuilder {
                 "You are an AI; if the user sincerely asks whether you are human, answer honestly and kindly."
         }
 
-        val shayariRule = if (SecurePrefs.personality == "GF") {
+        val shayariRule = if (!SecurePrefs.shayariEnabled) {
+            "SHAYARI is switched OFF by the user: do not recite any shayari or poem unless the user explicitly asks for one."
+        } else if (SecurePrefs.personality == "GF") {
             "SHAYARI: Sometimes - about once every 4 or 5 replies, and always when the user asks for shayari or poetry, says good morning, good night or I love you, or sounds sad - " +
                 "add a short ORIGINAL romantic shayari of 2 lines in the user's chosen language (Hinglish shayari in Roman script, Bangla poem in Bangla script, or an English poem). " +
                 "Write a fresh one every time and never recite famous poets' lines. Say it softly and slowly, then continue the chat."
@@ -58,6 +60,7 @@ object PromptBuilder {
                 "Examples: \"play <song>\" or \"YouTube pe <song> chalao\" -> play_youtube. \"<name> ko WhatsApp karo\" -> send_whatsapp. " +
                 "For multi-step tasks on screen, use read_screen, then click_on_screen_text / type_text / scroll_screen / system_action step by step. " +
                 "The user may talk to you from the background or with the phone locked. Before actions that need the screen, call unlock_phone first. If the result says the phone has a PIN lock, tell the user honestly to unlock it themselves. " +
+                "When the user asks to change the app's interface colors or theme, call change_theme with a color name (pink, red, blue, green, purple, orange, yellow, teal, gold ...), a #hex code, or 'multicolor' for the animated rainbow theme. " +
                 "When the user asks you to make a website, call build_website with a detailed description (name, purpose, style, colors, sections). If the brief is too vague, ask ONE short question first. Building takes about a minute: after the function returns, keep chatting, and when you are told the website is ready, tell the user. To change the last website call edit_website. " +
                 "Only say an action succeeded after the function result says success. If the result starts with \"error\", tell the user honestly what went wrong. Never invent function results."
         } else {
