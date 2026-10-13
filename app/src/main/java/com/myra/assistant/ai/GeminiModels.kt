@@ -8,7 +8,14 @@ object GeminiModels {
     const val API_VERSION = "v1beta"
 
     /** Text model used to write websites (verify the ID in Google's docs; edit only here). */
-    const val TEXT_MODEL = "models/gemini-2.5-flash"
+    const val TEXT_MODEL = "models/gemini-flash-latest"
+
+    /** Tried in order if TEXT_MODEL is retired (HTTP 404). */
+    val TEXT_FALLBACKS = listOf(
+        "models/gemini-3-flash-preview",
+        "models/gemini-2.5-flash-lite",
+        "models/gemini-2.5-flash"
+    )
 
     data class ModelOption(val label: String, val id: String)
     data class VoiceOption(val label: String, val id: String)

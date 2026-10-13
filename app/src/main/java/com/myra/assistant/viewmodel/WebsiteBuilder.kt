@@ -57,49 +57,64 @@ object WebsiteBuilder {
         Return the COMPLETE updated HTML file only, starting with <!DOCTYPE html>. No explanations and no markdown fences.
     """.trimIndent()
 
-    /** Streams the answer (SSE) so the code can be shown live in the terminal while it is being written. */
+    /** Streams the answer (SSE) so the code can be shown live in the terminal while it is being written.
+     *  If a model is retired (404) or rejects a setting (400), it silently tries the next model. */
     @Throws(CommandException::class)
     fun generate(prompt: String, onChunk: ((String) -> Unit)? = null): String {
         val key = SecurePrefs.apiKey.trim()
         if (key.isEmpty()) throw CommandException("Gemini API key missing")
-        val body = JSONObject()
-            .put("contents", JSONArray().put(JSONObject().put("parts", JSONArray().put(JSONObject().put("text", prompt)))))
-            .put(
-                "generationConfig", JSONObject()
-                    .put("temperature", 0.8)
-                    .put("maxOutputTokens", 20000)
-                    .put("thinkingConfig", JSONObject().put("thinkingBudget", 0))
-            )
-        val req = Request.Builder()
-            .url("https://generativelanguage.googleapis.com/v1beta/${GeminiModels.TEXT_MODEL}:streamGenerateContent?alt=sse&key=$key")
-            .post(body.toString().toRequestBody("application/json".toMediaType()))
-            .build()
-        http.newCall(req).execute().use { r ->
-            if (!r.isSuccessful) {
-                val txt = r.body?.string() ?: ""
-                throw CommandException("Gemini error ${r.code}: ${txt.take(160)}")
-            }
-            val src = r.body?.source() ?: throw CommandException("empty answer from Gemini")
-            val sb = StringBuilder()
-            while (true) {
-                val line = src.readUtf8Line() ?: break
-                if (!line.startsWith("data:")) continue
-                val json = line.removePrefix("data:").trim()
-                if (json.isEmpty()) continue
-                val obj = try { JSONObject(json) } catch (_: Exception) { continue }
-                val parts = obj.optJSONArray("candidates")?.optJSONObject(0)
-                    ?.optJSONObject("content")?.optJSONArray("parts") ?: continue
-                for (i in 0 until parts.length()) {
-                    val t = parts.optJSONObject(i)?.optString("text") ?: ""
-                    if (t.isNotEmpty()) {
-                        sb.append(t)
-                        onChunk?.invoke(t)
+        var lastErr = "Gemini error"
+        for (model in listOf(GeminiModels.TEXT_MODEL) + GeminiModels.TEXT_FALLBACKS) {
+            for (thinking in listOf(true, false)) {
+                val cfg = JSONObject().put("temperature", 0.8).put("maxOutputTokens", 20000)
+                if (thinking) cfg.put("thinkingConfig", JSONObject().put("thinkingBudget", 0))
+                val body = JSONObject()
+                    .put("contents", JSONArray().put(JSONObject().put("parts", JSONArray().put(JSONObject().put("text", prompt)))))
+                    .put("generationConfig", cfg)
+                val req = Request.Builder()
+                    .url("https://generativelanguage.googleapis.com/v1beta/$model:streamGenerateContent?alt=sse&key=$key")
+                    .post(body.toString().toRequestBody("application/json".toMediaType()))
+                    .build()
+                var code = 0
+                val out: String? = http.newCall(req).execute().use { r ->
+                    code = r.code
+                    if (!r.isSuccessful) {
+                        lastErr = "Gemini error ${r.code} ($model): ${(r.body?.string() ?: "").take(160)}"
+                        null
+                    } else {
+                        readStream(r, onChunk)
                     }
                 }
+                if (out != null) return cleanHtml(out)
+                if (code == 400 && thinking) continue            // retry same model without thinkingConfig
+                if (code == 400 || code == 404 || code == 503) break // try the next model
+                throw CommandException(lastErr)                   // key / quota problems: stop
             }
-            if (sb.isBlank()) throw CommandException("empty answer from Gemini")
-            return cleanHtml(sb.toString())
         }
+        throw CommandException(lastErr)
+    }
+
+    private fun readStream(r: okhttp3.Response, onChunk: ((String) -> Unit)?): String {
+        val src = r.body?.source() ?: throw CommandException("empty answer from Gemini")
+        val sb = StringBuilder()
+        while (true) {
+            val line = src.readUtf8Line() ?: break
+            if (!line.startsWith("data:")) continue
+            val json = line.removePrefix("data:").trim()
+            if (json.isEmpty()) continue
+            val obj = try { JSONObject(json) } catch (_: Exception) { continue }
+            val parts = obj.optJSONArray("candidates")?.optJSONObject(0)
+                ?.optJSONObject("content")?.optJSONArray("parts") ?: continue
+            for (i in 0 until parts.length()) {
+                val t = parts.optJSONObject(i)?.optString("text") ?: ""
+                if (t.isNotEmpty()) {
+                    sb.append(t)
+                    onChunk?.invoke(t)
+                }
+            }
+        }
+        if (sb.isBlank()) throw CommandException("empty answer from Gemini")
+        return sb.toString()
     }
 
     private fun cleanHtml(raw: String): String {
