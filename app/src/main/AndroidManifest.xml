@@ -26,6 +26,13 @@
 
     <queries>
         <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
@@ -46,12 +53,56 @@
             android:name=".ui.main.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:screenOrientation="portrait">
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Launcher icon choices (Aura Control > Launcher Core). Exactly one alias is enabled at a time. -->
+        <activity-alias android:name=".IconDefault" android:targetActivity=".ui.main.MainActivity"
+            android:enabled="true" android:exported="true" android:label="@string/app_name"
+            android:icon="@mipmap/ic_launcher_default" android:roundIcon="@mipmap/ic_launcher_default">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
+        <activity-alias android:name=".IconAurared" android:targetActivity=".ui.main.MainActivity"
+            android:enabled="false" android:exported="true" android:label="@string/app_name"
+            android:icon="@mipmap/ic_launcher_aurared" android:roundIcon="@mipmap/ic_launcher_aurared">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".IconMidnight" android:targetActivity=".ui.main.MainActivity"
+            android:enabled="false" android:exported="true" android:label="@string/app_name"
+            android:icon="@mipmap/ic_launcher_midnight" android:roundIcon="@mipmap/ic_launcher_midnight">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".IconClassic" android:targetActivity=".ui.main.MainActivity"
+            android:enabled="false" android:exported="true" android:label="@string/app_name"
+            android:icon="@mipmap/ic_launcher_classic" android:roundIcon="@mipmap/ic_launcher_classic">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".IconGold" android:targetActivity=".ui.main.MainActivity"
+            android:enabled="false" android:exported="true" android:label="@string/app_name"
+            android:icon="@mipmap/ic_launcher_gold" android:roundIcon="@mipmap/ic_launcher_gold">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity
+            android:name=".ui.connectors.ConnectorsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".ui.license.ActivationActivity"

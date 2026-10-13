@@ -13,6 +13,7 @@ import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.View
 import android.view.animation.LinearInterpolator
+import androidx.core.graphics.ColorUtils
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.min
@@ -32,8 +33,10 @@ class OrbAnimationView @JvmOverloads constructor(
     private val startTime = SystemClock.uptimeMillis()
     private var driver: ValueAnimator? = null
 
-    private var c1 = Color.parseColor("#C2185B")
-    private var c2 = Color.parseColor("#7B1FA2")
+    private var baseP = Color.parseColor("#FF2A3A")
+    private var baseS = Color.parseColor("#B3001B")
+    private var c1 = Color.parseColor("#B71C1C")
+    private var c2 = Color.parseColor("#4A0A0F")
 
     private var cx = 0f
     private var cy = 0f
@@ -58,15 +61,29 @@ class OrbAnimationView @JvmOverloads constructor(
     fun setState(s: State) {
         if (s == state) return
         state = s
-        when (s) {
-            State.IDLE -> { c1 = Color.parseColor("#C2185B"); c2 = Color.parseColor("#7B1FA2") }
-            State.LISTENING, State.ACTIVE -> { c1 = Color.parseColor("#FF4D8D"); c2 = Color.parseColor("#B388FF") }
-            State.HEARING -> { c1 = Color.parseColor("#FFD54F"); c2 = Color.parseColor("#FF8A65") }
-            State.SPEAKING -> { c1 = Color.parseColor("#FF80AB"); c2 = Color.parseColor("#E040FB") }
-            State.THINKING -> { c1 = Color.parseColor("#80D8FF"); c2 = Color.parseColor("#B388FF") }
-        }
+        applyColors()
         rebuildShaders()
         invalidate()
+    }
+
+    /** Aura colours (primary / secondary) chosen in Aura Control. */
+    fun setThemeColors(p: Int, s: Int) {
+        if (p == baseP && s == baseS) return
+        baseP = p
+        baseS = s
+        applyColors()
+        rebuildShaders()
+        invalidate()
+    }
+
+    private fun applyColors() {
+        when (state) {
+            State.IDLE -> { c1 = ColorUtils.blendARGB(baseP, Color.BLACK, 0.35f); c2 = ColorUtils.blendARGB(baseS, Color.BLACK, 0.55f) }
+            State.LISTENING, State.ACTIVE -> { c1 = baseP; c2 = baseS }
+            State.HEARING -> { c1 = Color.parseColor("#FFD54F"); c2 = Color.parseColor("#FF6D00") }
+            State.SPEAKING -> { c1 = ColorUtils.blendARGB(baseP, Color.WHITE, 0.3f); c2 = ColorUtils.blendARGB(baseS, Color.parseColor("#E040FB"), 0.5f) }
+            State.THINKING -> { c1 = Color.parseColor("#80D8FF"); c2 = baseS }
+        }
     }
 
     /** rms 0..1 */

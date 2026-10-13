@@ -288,6 +288,15 @@ class MyraVoiceService : Service() {
         return true
     }
 
+    /** Visual Lens: sends a photo plus an instruction. Returns false when not connected. */
+    fun sendImage(jpeg: ByteArray, prompt: String): Boolean {
+        val l = live ?: return false
+        if (!l.isConnected) return false
+        l.sendImage(jpeg)
+        l.sendText(prompt)
+        return true
+    }
+
     /** Sends an instruction to MYRA (not shown in chat); used when a background job finishes. */
     fun tell(text: String) {
         val l = live ?: return

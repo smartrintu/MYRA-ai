@@ -1,5 +1,14 @@
 # MYRA — Android AI Voice Assistant
 
+## Naya (v3.0.0): 3D Aura design + seedha update
+- Naya dark-red 3D design: full-page 3D tunnel animation, orb, Voice Mode / Visual Lens, Quick Actions, Chat, Discover, Aura Control, Connectors (20).
+- **Update bina uninstall:** `app/debug.keystore` repo mein hi hai, isliye har GitHub build ek hi key se sign hota hai aur versionCode har build par badhta hai. Naya APK purane MYRA ke upar seedha install ho jayega.
+- `app/debug.keystore` ko kabhi delete/replace mat karna, warna update phir se uninstall maangega.
+- Pehli baar: purana app `com.myra.assistant.debug` naam se tha, ye naya app `com.myra.assistant` hai, isliye ye alag app ki tarah install hoga (purana band/uninstall aap baad mein kar sakte ho). Uske baad har naya build isi ke upar update hoga.
+
+---
+
+
 ## GitHub se APK banana
 1. GitHub par naya repository banao (Public ya Private).
 2. Is poore project ke files (`.github` folder ke saath) repo mein upload karo.

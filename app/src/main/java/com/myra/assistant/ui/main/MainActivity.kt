@@ -1,16 +1,42 @@
 package com.myra.assistant.ui.main
 
 import android.Manifest
-import android.app.ActivityManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import androidx.appcompat.app.AlertDialog
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.drawable.GradientDrawable
+import android.media.ExifInterface
+import android.net.Uri
 import android.os.SystemClock
-import android.os.BatteryManager
+import android.text.InputType
+import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
+import android.view.ViewOutlineProvider
+import android.view.inputmethod.EditorInfo
+import android.widget.EditText
+import android.widget.FrameLayout
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
+import androidx.core.content.FileProvider
+import androidx.core.graphics.drawable.RoundedBitmapDrawableFactory
+import com.myra.assistant.ai.ResearchClient
+import com.myra.assistant.ui.connectors.ConnectorCatalog
+import com.myra.assistant.ui.connectors.ConnectorsActivity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.net.URLEncoder
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -23,9 +49,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.myra.assistant.R
 import com.myra.assistant.ai.CommandParser
@@ -41,10 +65,7 @@ import com.myra.assistant.service.MyraVoiceService
 import com.myra.assistant.ui.settings.SettingsActivity
 import com.myra.assistant.ui.theme.ThemeManager
 import com.myra.assistant.viewmodel.CommandExecutor
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 
 /** UI only. The microphone + Gemini session live in MyraVoiceService so they survive background/lock. */
@@ -53,6 +74,15 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener, TerminalL
     private lateinit var binding: ActivityMainBinding
     private val chatAdapter = ChatAdapter()
     private val executor by lazy { CommandExecutor(applicationContext) }
+
+    private enum class Page { HOME, CHAT, DISCOVER, AURA }
+    private var page = Page.HOME
+    private var lensFile: File? = null
+    private var keyAtLaunch = ""
+
+    private val takePicture = registerForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+        if (ok) sendLensPhoto()
+    }
 
     private var askedOptional = false
     private var isInCallMode = false
@@ -101,14 +131,12 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener, TerminalL
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
 
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                while (true) {
-                    updateStatusBar()
-                    delay(30_000)
-                }
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (page != Page.HOME) showPage(Page.HOME) else finish()
             }
-        }
+        })
+        keyAtLaunch = SecurePrefs.apiKey
 
         ensurePermissions()
         handleIncomingCallIntent(intent)
@@ -150,11 +178,18 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener, TerminalL
             return
         }
         val n = SecurePrefs.userName.trim()
-        binding.subtitleText.text = if (n.isEmpty()) "AI COMPANION" else "💕 $n's MYRA"
+        binding.greetingText.text = if (n.isEmpty()) "Hello" else "Hello, $n"
         val stamp = AvatarStore.stamp(this)
         if (stamp != avatarStamp) {
             avatarStamp = stamp
-            binding.orbView.setPhoto(AvatarStore.load(this))
+            setNavAvatar(AvatarStore.load(this))
+        }
+        binding.connectorsCount.text = "${ConnectorCatalog.connectedCount()} of ${ConnectorCatalog.all.size} connected"
+        binding.auraCurrent.text = "Current: ${currentAuraName()}"
+        binding.hapticSwitch.isChecked = SecurePrefs.haptics
+        if (SecurePrefs.apiKey != keyAtLaunch) {
+            keyAtLaunch = SecurePrefs.apiKey
+            onSettingsSaved()
         }
     }
 
@@ -172,27 +207,84 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener, TerminalL
         handler.removeCallbacks(themeTicker)
         themeTicker.run()
         chatAdapter.refresh()
+        binding.auraCurrent.text = "Current: ${currentAuraName()}"
     }
 
     private fun applyTheme() {
         val t = (SystemClock.uptimeMillis() % 1_000_000L) / 1000f
         val pal = ThemeManager.palette(t)
-        binding.root.background = GradientDrawable(
-            GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(pal.bgTop, pal.bgMid, pal.bgBottom)
-        )
+        binding.sceneView.setColors(pal.p, pal.s)
+        binding.orbView.setThemeColors(pal.p, pal.s)
         binding.micButton.background = GradientDrawable(
             GradientDrawable.Orientation.TL_BR, intArrayOf(pal.p, pal.s)
         ).apply {
             shape = GradientDrawable.OVAL
             setStroke(dp(3), 0x66FFFFFF)
         }
-        binding.titleText.setTextColor(pal.soft)
-        binding.subtitleText.setTextColor(pal.text)
-        binding.statusText.setTextColor(pal.text)
-        binding.heartsView.setPalette(intArrayOf(pal.soft, pal.p, pal.s, pal.text))
-        binding.orbView.setThemeColors(pal.p, pal.s)
-        binding.waveformView.setColor(pal.p)
+        binding.sendBtn.setColorFilter(pal.p)
+        binding.chatSend.setColorFilter(pal.p)
         chatAdapter.setTheme(pal.p, pal.s)
+        tintNav(pal.p)
+    }
+
+    private val auraThemes = listOf(
+        "Crimson Aura" to "red", "Rose Aura" to "pink", "Ocean Aura" to "blue", "Violet Aura" to "purple",
+        "Emerald Aura" to "green", "Amber Aura" to "orange", "Golden Aura" to "gold", "Multicolor Aura" to "multicolor"
+    )
+
+    private fun currentAuraName(): String {
+        val th = SecurePrefs.theme
+        if (ThemeManager.isRainbow()) return "Multicolor Aura"
+        return auraThemes.firstOrNull { it.second == th }?.first ?: "Custom Aura"
+    }
+
+    // ------------------------------------------------------------------ pages / navigation
+
+    private fun tintNav(active: Int) {
+        val items = listOf(
+            binding.navHome to Page.HOME, binding.navChat to Page.CHAT,
+            binding.navDiscover to Page.DISCOVER, binding.navSettings to Page.AURA
+        )
+        for ((v, p) in items) {
+            val c = if (p == page) active else Color.parseColor("#8A7F80")
+            (v.getChildAt(0) as ImageView).setColorFilter(c)
+            (v.getChildAt(1) as TextView).setTextColor(c)
+        }
+    }
+
+    private fun pageView(p: Page): View = when (p) {
+        Page.HOME -> binding.pageHome
+        Page.CHAT -> binding.pageChat
+        Page.DISCOVER -> binding.pageDiscover
+        Page.AURA -> binding.pageAura
+    }
+
+    private fun showPage(p: Page) {
+        if (p == page && pageView(p).visibility == View.VISIBLE) return
+        Haptics.tap(this)
+        val out = pageView(page)
+        val inn = pageView(p)
+        page = p
+        out.animate().cancel()
+        out.visibility = View.GONE
+        inn.animate().cancel()
+        inn.alpha = 0f
+        inn.translationY = dp(24).toFloat()
+        inn.visibility = View.VISIBLE
+        inn.animate().alpha(1f).translationY(0f).setDuration(230).start()
+        tintNav(ThemeManager.palette(0f).p)
+        applyThemeNow()
+        if (p == Page.CHAT && chatAdapter.itemCount > 0) binding.chatRecycler.scrollToPosition(chatAdapter.itemCount - 1)
+    }
+
+    private fun setNavAvatar(bmp: Bitmap?) {
+        if (bmp == null) return
+        val side = minOf(bmp.width, bmp.height)
+        val sq = Bitmap.createBitmap(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side)
+        binding.navOrb.scaleType = ImageView.ScaleType.FIT_CENTER
+        binding.navOrb.setImageDrawable(
+            RoundedBitmapDrawableFactory.create(resources, sq).apply { isCircular = true }
+        )
     }
 
     // ------------------------------------------------------------------ UiListener (called on main thread)
@@ -203,21 +295,6 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener, TerminalL
 
     override fun onOrb(state: OrbAnimationView.State) {
         binding.orbView.setState(state)
-        binding.heartsView.setLively(state == OrbAnimationView.State.SPEAKING || state == OrbAnimationView.State.HEARING)
-        // red = waiting, green = you are talking, purple = MYRA talking, cyan = working
-        val color = when (state) {
-            OrbAnimationView.State.HEARING -> Color.parseColor("#FFD54F")
-            OrbAnimationView.State.SPEAKING -> Color.parseColor("#E040FB")
-            OrbAnimationView.State.THINKING -> Color.parseColor("#80D8FF")
-            else -> Color.parseColor("#FF4D8D")
-        }
-        val active = state == OrbAnimationView.State.HEARING ||
-            state == OrbAnimationView.State.SPEAKING ||
-            state == OrbAnimationView.State.THINKING
-        binding.redOverlay.setBackgroundColor(color)
-        binding.redOverlay.animate().cancel()
-        binding.redOverlay.animate().alpha(if (active) 0.10f else 0f)
-            .setDuration(if (active) 250 else 450).start()
     }
 
     private val hideTerminal = Runnable { binding.terminalPanel.visibility = android.view.View.GONE }
@@ -234,7 +311,7 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener, TerminalL
     }
 
     override fun onAmplitude(a: Float) {
-        binding.waveformView.setAmplitude(a)
+        binding.sceneView.setAmplitude(a)
         binding.orbView.setAmplitude(a)
     }
 
@@ -295,24 +372,311 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener, TerminalL
         }
         updateEnableSwitch()
 
-        binding.terminalClose.setOnClickListener { binding.terminalPanel.visibility = android.view.View.GONE }
+        binding.terminalClose.setOnClickListener { binding.terminalPanel.visibility = View.GONE }
 
-        binding.settingsBtn.setOnClickListener {
-            settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
+        // bottom navigation
+        binding.navHome.setOnClickListener { showPage(Page.HOME) }
+        binding.navChat.setOnClickListener { showPage(Page.CHAT) }
+        binding.navDiscover.setOnClickListener { showPage(Page.DISCOVER) }
+        binding.navSettings.setOnClickListener { showPage(Page.AURA) }
+        binding.navOrb.setOnClickListener {
+            showPage(Page.HOME)
+            toggleMic()
         }
 
-        binding.micButton.setOnClickListener {
-            val svc = MyraVoiceService.instance
-            when {
-                svc == null -> if (!SecurePrefs.enabled) setMyraEnabled(true) else startVoiceService()
-                !MyraVoiceService.connected -> startOfflineListen()
-                else -> svc.setMuted(!MyraVoiceService.muted)
-            }
-        }
+        // home
+        binding.micButton.setOnClickListener { Haptics.tap(this, true); toggleMic() }
         binding.micButton.setOnLongClickListener {
             MyraVoiceService.instance?.interrupt()
             setStatus("Ruk gayi 🤐")
             true
+        }
+        binding.cardVoice.setOnClickListener { Haptics.tap(this, true); toggleMic() }
+        binding.cardLens.setOnClickListener { Haptics.tap(this); openLens() }
+        binding.quickResearch.setOnClickListener {
+            Haptics.tap(this)
+            askDialog("Deep Research", "Kis topic par research karun?") { deepResearch(it) }
+        }
+        binding.quickImage.setOnClickListener {
+            Haptics.tap(this)
+            askDialog("Image Search", "Kya dhoondhna hai?") { imageSearch(it) }
+        }
+        binding.sendBtn.setOnClickListener { submitInput(binding.askInput, true) }
+        binding.askInput.setOnEditorActionListener { _, id, _ ->
+            if (id == EditorInfo.IME_ACTION_SEND) { submitInput(binding.askInput, true); true } else false
+        }
+        binding.chatSend.setOnClickListener { submitInput(binding.chatInput, false) }
+        binding.chatInput.setOnEditorActionListener { _, id, _ ->
+            if (id == EditorInfo.IME_ACTION_SEND) { submitInput(binding.chatInput, false); true } else false
+        }
+
+        buildDiscover()
+        buildAura()
+    }
+
+    private fun toggleMic() {
+        val svc = MyraVoiceService.instance
+        when {
+            svc == null -> if (!SecurePrefs.enabled) setMyraEnabled(true) else startVoiceService()
+            !MyraVoiceService.connected -> startOfflineListen()
+            else -> svc.setMuted(!MyraVoiceService.muted)
+        }
+    }
+
+    private fun submitInput(field: EditText, goToChat: Boolean) {
+        val t = field.text.toString().trim()
+        if (t.isEmpty()) return
+        field.setText("")
+        Haptics.tap(this)
+        if (goToChat) showPage(Page.CHAT)
+        sendTyped(t)
+    }
+
+    /** Typed message: goes to the live session if connected, else the offline command parser. */
+    private fun sendTyped(text: String) {
+        val t = text.trim()
+        if (t.isEmpty()) return
+        val svc = MyraVoiceService.instance
+        if (svc != null && MyraVoiceService.connected) {
+            addChat(t, true)
+            svc.tell(t)
+            setStatus("Soch rahi hoon...")
+        } else {
+            handleOfflineText(t)
+        }
+    }
+
+    private fun askDialog(title: String, hint: String, onOk: (String) -> Unit) {
+        val input = EditText(this).apply {
+            this.hint = hint
+            setSingleLine(true)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            setPadding(dp(20), dp(12), dp(20), dp(12))
+        }
+        val box = FrameLayout(this).apply { setPadding(dp(16), dp(8), dp(16), 0); addView(input) }
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setView(box)
+            .setPositiveButton("Go") { _, _ ->
+                val q = input.text.toString().trim()
+                if (q.isNotEmpty()) onOk(q)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    // ------------------------------------------------------------------ home quick actions
+
+    private fun deepResearch(q: String) {
+        showPage(Page.CHAT)
+        addChat("🔎 Deep Research: $q", true)
+        setStatus("Research chal rahi hai...")
+        lifecycleScope.launch {
+            val res = withContext(Dispatchers.IO) { ResearchClient.run(q) }
+            val svc = MyraVoiceService.instance
+            if (res != null) {
+                addChat(res.text, false)
+                setStatus("Research ho gayi ✅ (${res.source})")
+                svc?.tell(
+                    "You just finished deep research for the user on \"$q\" using ${res.source}. " +
+                        "Tell them the key findings in 2-3 short spoken sentences. Findings: ${res.text.take(3500)}"
+                )
+            } else if (svc != null && MyraVoiceService.connected) {
+                svc.tell("Do a quick but careful research answer about: $q. Give the key points in 3 short spoken sentences.")
+                addChat("Connectors mein Perplexity / Tavily / Claude key daalo to poori research aayegi. Abhi Gemini se short jawab le rahi hoon.", false)
+            } else {
+                addChat("Research ke liye Aura Control > Connectors mein Perplexity, Tavily ya Claude ki key daalo.", false)
+                setStatus("Key chahiye")
+            }
+        }
+    }
+
+    private fun imageSearch(q: String) {
+        try {
+            val url = "https://www.google.com/search?tbm=isch&q=" + URLEncoder.encode(q, "UTF-8")
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        } catch (e: Exception) {
+            Toast.makeText(this, "Browser nahi khula: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun openLens() {
+        val svc = MyraVoiceService.instance
+        if (svc == null || !MyraVoiceService.connected) {
+            Toast.makeText(this, "Pehle MYRA ko connect karo (mic ON, Gemini key)", Toast.LENGTH_LONG).show()
+            return
+        }
+        try {
+            val f = File(cacheDir, "lens/lens.jpg")
+            f.parentFile?.mkdirs()
+            lensFile = f
+            val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", f)
+            takePicture.launch(uri)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Camera nahi khula: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun sendLensPhoto() {
+        val f = lensFile ?: return
+        lifecycleScope.launch {
+            val bytes = withContext(Dispatchers.IO) { try { compressPhoto(f) } catch (e: Exception) { null } }
+            val svc = MyraVoiceService.instance
+            if (bytes == null) {
+                Toast.makeText(this@MainActivity, "Photo load nahi hui", Toast.LENGTH_SHORT).show()
+            } else if (svc != null && svc.sendImage(
+                    bytes,
+                    "The user just showed you a photo with the camera (Visual Lens). Look at it and tell them what you see in 2 short sentences, then ask what they want to know."
+                )
+            ) {
+                addChat("📷 Visual Lens: photo bhej di", true)
+                setStatus("Dekh rahi hoon...")
+            } else {
+                Toast.makeText(this@MainActivity, "MYRA connected nahi hai", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun compressPhoto(f: File): ByteArray? {
+        if (!f.exists()) return null
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(f.absolutePath, bounds)
+        var sample = 1
+        while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 2048) sample *= 2
+        var bmp = BitmapFactory.decodeFile(f.absolutePath, BitmapFactory.Options().apply { inSampleSize = sample }) ?: return null
+        val rot = when (ExifInterface(f.absolutePath).getAttributeInt(ExifInterface.TAG_ORIENTATION, 1)) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+            ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+            else -> 0f
+        }
+        if (rot != 0f) bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, Matrix().apply { postRotate(rot) }, true)
+        val m = maxOf(bmp.width, bmp.height)
+        if (m > 1024) {
+            val k = 1024f / m
+            bmp = Bitmap.createScaledBitmap(bmp, (bmp.width * k).toInt(), (bmp.height * k).toInt(), true)
+        }
+        val out = ByteArrayOutputStream()
+        bmp.compress(Bitmap.CompressFormat.JPEG, 80, out)
+        return out.toByteArray()
+    }
+
+    // ------------------------------------------------------------------ discover page
+
+    private fun buildDiscover() {
+        data class Tip(val title: String, val sub: String, val prompt: String)
+        val tips = listOf(
+            Tip("Aaj ka mausam", "Weather aur forecast", "Aaj ka mausam kaisa hai?"),
+            Tip("Gaana chalao", "YouTube par music", "YouTube par ek romantic gaana chalao"),
+            Tip("Website banao", "Poori website ek minute mein", "Mere liye ek photography studio ki website bana do"),
+            Tip("Alarm lagao", "Subah ka alarm", "Kal subah 6 baje ka alarm laga do"),
+            Tip("WhatsApp bhejo", "Kisi ko message", "Mummy ko WhatsApp par good morning bhejo"),
+            Tip("Torch ON", "Flashlight control", "Torch on kar do"),
+            Tip("Screen padho", "Screen par kya hai", "Meri screen par kya likha hai padh ke batao"),
+            Tip("Interface ka color", "Aura theme badlo", "Interface ka color nila kar do"),
+            Tip("Multicolor mode", "Rainbow animation", "Interface multicolor kar do"),
+            Tip("Battery check", "Phone ki battery", "Battery kitni bachi hai?")
+        )
+        val list = binding.discoverList
+        for (t in tips) {
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setBackgroundResource(com.myra.assistant.R.drawable.bg_card_dark)
+                setPadding(dp(16), dp(14), dp(16), dp(14))
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    Haptics.tap(this@MainActivity)
+                    showPage(Page.CHAT)
+                    sendTyped(t.prompt)
+                }
+            }
+            card.addView(TextView(this).apply {
+                text = t.title; setTextColor(Color.WHITE); textSize = 16f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+            })
+            card.addView(TextView(this).apply {
+                text = t.sub; setTextColor(Color.parseColor("#B5AAAB")); textSize = 12f
+            })
+            list.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) })
+        }
+    }
+
+    // ------------------------------------------------------------------ Aura Control page
+
+    private fun buildAura() {
+        binding.auraBack.setOnClickListener { showPage(Page.HOME) }
+
+        binding.hapticSwitch.isChecked = SecurePrefs.haptics
+        binding.hapticSwitch.setOnCheckedChangeListener { _, on ->
+            SecurePrefs.haptics = on
+            if (on) Haptics.tap(this, true)
+        }
+
+        binding.rowAura.setOnClickListener {
+            Haptics.tap(this)
+            AlertDialog.Builder(this)
+                .setTitle("Aura Signature")
+                .setItems(auraThemes.map { it.first }.toTypedArray()) { _, i ->
+                    ThemeManager.set(auraThemes[i].second)
+                    Haptics.tap(this, true)
+                }
+                .show()
+        }
+        binding.rowSystem.setOnClickListener {
+            Haptics.tap(this)
+            settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
+        }
+        binding.rowConnectors.setOnClickListener {
+            Haptics.tap(this)
+            startActivity(Intent(this, ConnectorsActivity::class.java))
+        }
+        buildIconRow()
+    }
+
+    private fun buildIconRow() {
+        val row = binding.iconRow
+        row.removeAllViews()
+        for (ic in LauncherIcons.all) {
+            val selected = ic.id == SecurePrefs.launcherIcon
+            val cell = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                setPadding(dp(6), dp(6), dp(6), dp(6))
+                setOnClickListener {
+                    Haptics.tap(this@MainActivity, true)
+                    LauncherIcons.apply(this@MainActivity, ic.id)
+                    Toast.makeText(this@MainActivity, "${ic.label} icon set ✅ (launcher ko 2-3 sec lag sakte hain)", Toast.LENGTH_LONG).show()
+                    buildIconRow()
+                }
+            }
+            val frame = FrameLayout(this).apply {
+                setBackgroundResource(if (selected) com.myra.assistant.R.drawable.bg_icon_selected else com.myra.assistant.R.drawable.bg_icon_plain)
+                setPadding(dp(3), dp(3), dp(3), dp(3))
+            }
+            val clip = FrameLayout(this).apply {
+                clipToOutline = true
+                outlineProvider = object : ViewOutlineProvider() {
+                    override fun getOutline(view: View, outline: android.graphics.Outline) {
+                        outline.setRoundRect(0, 0, view.width, view.height, dp(14).toFloat())
+                    }
+                }
+            }
+            val img = ImageView(this).apply {
+                setImageDrawable(ContextCompat.getDrawable(this@MainActivity, ic.res))
+            }
+            // adaptive icons are 108dp with a 72dp visible window -> draw big, clip to the window
+            clip.addView(img, FrameLayout.LayoutParams(dp(90), dp(90), Gravity.CENTER))
+            frame.addView(clip, FrameLayout.LayoutParams(dp(60), dp(60)))
+            cell.addView(frame)
+            cell.addView(TextView(this).apply {
+                text = ic.label
+                textSize = 12f
+                setTextColor(if (selected) Color.WHITE else Color.parseColor("#B5AAAB"))
+                gravity = Gravity.CENTER
+                setPadding(0, dp(6), 0, 0)
+            })
+            row.addView(cell)
         }
     }
 
@@ -323,16 +687,6 @@ class MainActivity : AppCompatActivity(), MyraVoiceService.UiListener, TerminalL
     private fun addChat(text: String, isUser: Boolean) {
         if (text.isBlank()) return
         onChat(ChatMessage(text.trim(), isUser))
-    }
-
-    private fun updateStatusBar() {
-        val bm = getSystemService(BATTERY_SERVICE) as BatteryManager
-        binding.batteryText.text = "${bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)}%"
-        val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
-        val mi = ActivityManager.MemoryInfo()
-        am.getMemoryInfo(mi)
-        if (mi.totalMem > 0) binding.ramText.text = "RAM ${100 - (mi.availMem * 100 / mi.totalMem)}%"
-        binding.timeText.text = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
     }
 
     // ------------------------------------------------------------------ permissions

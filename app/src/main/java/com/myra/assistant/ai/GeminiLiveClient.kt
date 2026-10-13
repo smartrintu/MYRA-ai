@@ -117,6 +117,18 @@ class GeminiLiveClient(private val context: Context) {
         socket?.send(JSONObject().put("realtimeInput", JSONObject().put("audioStreamEnd", true)).toString())
     }
 
+    /** Sends one camera frame (JPEG) into the live session (Visual Lens). */
+    fun sendImage(jpeg: ByteArray) {
+        if (!isConnected) return
+        val b64 = Base64.encodeToString(jpeg, Base64.NO_WRAP)
+        val msg = JSONObject().put(
+            "realtimeInput", JSONObject().put(
+                "video", JSONObject().put("mimeType", "image/jpeg").put("data", b64)
+            )
+        )
+        socket?.send(msg.toString())
+    }
+
     fun sendText(text: String) {
         if (!isConnected) return
         socket?.send(JSONObject().put("realtimeInput", JSONObject().put("text", text)).toString())

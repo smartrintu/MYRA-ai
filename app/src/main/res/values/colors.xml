@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="white">#FFFFFF</color>
-    <color name="myra_bg">#1A0B2E</color>
-    <color name="myra_red">#FF4D8D</color>
-    <color name="myra_purple">#B388FF</color>
-    <color name="myra_card">#2A1245</color>
-    <color name="myra_prime_card">#3A1250</color>
-    <color name="myra_text">#FFF0F6</color>
-    <color name="myra_hint">#C9A7E8</color>
+    <color name="myra_bg">#090506</color>
+    <color name="myra_red">#FF2A3A</color>
+    <color name="myra_purple">#B3001B</color>
+    <color name="myra_card">#140E0F</color>
+    <color name="myra_prime_card">#2A1012</color>
+    <color name="myra_text">#FFFFFF</color>
+    <color name="myra_hint">#9A8F90</color>
     <color name="myra_success">#00E676</color>
+    <color name="icbg_default">#140A0C</color>
+    <color name="icbg_aurared">#090506</color>
+    <color name="icbg_midnight">#05030F</color>
+    <color name="icbg_classic">#140810</color>
+    <color name="icbg_gold">#0F0A02</color>
 </resources>

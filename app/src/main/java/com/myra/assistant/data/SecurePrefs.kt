@@ -57,8 +57,26 @@ object SecurePrefs {
 
     /** pink, red, blue... , "#RRGGBB" or "RAINBOW" (animated multicolor). */
     var theme: String
-        get() = prefs.getString("ui_theme", "pink") ?: "pink"
+        get() = prefs.getString("ui_theme", "red") ?: "red"
         set(v) = prefs.edit().putString("ui_theme", v).apply()
+
+    /** Haptic Feedback switch (Aura Control). */
+    var haptics: Boolean
+        get() = prefs.getBoolean("haptics", true)
+        set(v) = prefs.edit().putBoolean("haptics", v).apply()
+
+    /** Selected launcher icon id: default, aurared, midnight, classic, gold. */
+    var launcherIcon: String
+        get() = prefs.getString("launcher_icon", "default") ?: "default"
+        set(v) = prefs.edit().putString("launcher_icon", v).apply()
+
+    /** API key of a connector (Connectors screen). Gemini uses the main apiKey. */
+    fun connectorKey(id: String): String =
+        if (id == "gemini") apiKey else (prefs.getString("conn_$id", "") ?: "")
+
+    fun setConnectorKey(id: String, v: String) {
+        if (id == "gemini") apiKey = v else prefs.edit().putString("conn_$id", v).apply()
+    }
 
     var licenseKey: String
         get() = prefs.getString("license_key", "") ?: ""

@@ -11,8 +11,21 @@ android {
         applicationId "com.myra.assistant"
         minSdk 26
         targetSdk 33
-        versionCode 1
-        versionName "1.1.0"
+        // Each GitHub build gets a higher versionCode, so every new APK installs as an UPDATE.
+        def runNo = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
+        versionCode 100 + runNo
+        versionName "3.0.0"
+    }
+
+    // Fixed signing key (committed in app/debug.keystore). Same key on every build =>
+    // new APK installs over the old one without uninstalling.
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
     }
 
     buildTypes {
@@ -23,7 +36,6 @@ android {
             // Add your own signingConfig for a release APK (do not use the debug key).
         }
         debug {
-            applicationIdSuffix ".debug"
             debuggable true
         }
     }
